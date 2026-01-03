@@ -1,0 +1,66 @@
+name: adoctl
+description: Azure DevOps Control Tool - CLI for managing PRs, builds, deployments, work items, and notifications
+version: 1.0.0
+author: adoctl contributors
+tags:
+  - azure-devops
+  - git
+  - pull-requests
+  - ci-cd
+  - cli
+  - devops
+commands:
+  - pr
+  - build
+  - deployment
+  - workitem
+  - repos
+  - report
+  - notify
+  - config
+  - hooks
+examples:
+  - question: "How do I create a PR with adoctl?"
+    answer: |
+      Use `adoctl pr create` with auto-detection from git context:
+      ```bash
+      adoctl pr create --title "My feature"
+      ```
+      Or specify explicitly:
+      ```bash
+      adoctl pr create --repository-name myrepo --source-branch feature --target-branch main --title "My feature"
+      ```
+
+  - question: "How do I copy output to clipboard for Teams?"
+    answer: |
+      Use the `--copy` flag on any command that outputs text:
+      ```bash
+      # Copy PR list
+      adoctl pr list --copy
+
+      # Copy report for Teams
+      adoctl report --status active --copy
+
+      # Copy pipeline status
+      adoctl pr pipeline --pr 123 --copy
+      ```
+      The output is formatted with markdown links that Teams renders as clickable.
+
+  - question: "How do I list PRs for my current branch?"
+    answer: |
+      ```bash
+      adoctl pr list --current-branch
+      ```
+
+  - question: "How do I monitor build and deployment status?"
+    answer: |
+      ```bash
+      # Get pipeline status for a PR
+      adoctl pr pipeline --pr 123
+
+      # Watch continuously
+      adoctl pr pipeline --pr 123 --watch
+
+      # Modern table format
+      adoctl pr pipeline --pr 123 --format modern
+      ```
