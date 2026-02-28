@@ -38,10 +38,10 @@ func (c *Client) BulkGetPullRequests(ctx context.Context, repoPRMap map[string][
 				mutex.Lock()
 				if err != nil {
 					logger.Warn().
-					Err(err).
-					Int("pr_id", prID).
-					Str("repo_id", repoID).
-					Msg("Error getting pull request in bulk operation")
+						Err(err).
+						Int("pr_id", prID).
+						Str("repo_id", repoID).
+						Msg("Error getting pull request in bulk operation")
 				} else {
 					results[prID] = pr
 				}
@@ -243,9 +243,9 @@ func (c *Client) BulkGetPullRequestsByRepo(ctx context.Context, repoIDs []string
 			mutex.Lock()
 			if err != nil {
 				logger.Warn().
-				Err(err).
-				Str("repo_id", repoID).
-				Msg("Error getting pull requests for repository in bulk operation")
+					Err(err).
+					Str("repo_id", repoID).
+					Msg("Error getting pull requests for repository in bulk operation")
 				results[repoID] = []git.GitPullRequest{}
 			} else {
 				results[repoID] = prs
@@ -276,9 +276,9 @@ func (c *Client) BulkGetBuilds(ctx context.Context, buildIDs []int, maxWorkers i
 			mutex.Lock()
 			if err != nil {
 				logger.Warn().
-				Err(err).
-				Int("build_id", buildID).
-				Msg("Error getting build in bulk operation")
+					Err(err).
+					Int("build_id", buildID).
+					Msg("Error getting build in bulk operation")
 			} else {
 				results[buildID] = build
 			}
@@ -357,9 +357,9 @@ func (c *Client) BulkGetRepositories(ctx context.Context, repoIDs []string, maxW
 			mutex.Lock()
 			if err != nil {
 				logger.Warn().
-				Err(err).
-				Str("repo_id", repoID).
-				Msg("Error getting repository in bulk operation")
+					Err(err).
+					Str("repo_id", repoID).
+					Msg("Error getting repository in bulk operation")
 			} else {
 				results[repoID] = repo
 			}

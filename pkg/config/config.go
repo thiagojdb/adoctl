@@ -15,9 +15,9 @@ const DefaultParallelProcesses = 32
 
 // Profile represents a named Azure DevOps configuration
 type Profile struct {
-	Name    string `yaml:"name"`
+	Name    string      `yaml:"name"`
 	Azure   AzureConfig `yaml:"azure"`
-	Default bool   `yaml:"default,omitempty"`
+	Default bool        `yaml:"default,omitempty"`
 }
 
 // Config holds the complete configuration including profiles

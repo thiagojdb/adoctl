@@ -36,9 +36,9 @@ jobs:
           # fi
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v3
         with:
-          file: ./coverage.out
+          files: ./coverage.out
           fail_ci_if_error: false
 
   lint:

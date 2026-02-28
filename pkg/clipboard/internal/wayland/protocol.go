@@ -197,7 +197,7 @@ func Serve(formats map[string][]byte) error {
 		}
 
 		switch {
-		case objectID == idRegistry && opcode == 0 /*global*/:
+		case objectID == idRegistry && opcode == 0 /*global*/ :
 			if len(payload) < 4 {
 				continue
 			}
@@ -215,7 +215,7 @@ func Serve(formats map[string][]byte) error {
 				dcManagerFound = true
 			}
 
-		case objectID == idCallback1 && opcode == 0 /*done*/:
+		case objectID == idCallback1 && opcode == 0 /*done*/ :
 			goto afterFirstSync
 		}
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 var (
 	reportRepositoryName string
 	reportRepoID         string

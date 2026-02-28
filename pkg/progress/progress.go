@@ -106,12 +106,12 @@ func (s *Spinner) animate() {
 
 // ProgressBar represents a simple progress bar
 type ProgressBar struct {
-	mu       sync.Mutex
-	writer   io.Writer
-	width    int
-	current  int
-	total    int
-	message  string
+	mu      sync.Mutex
+	writer  io.Writer
+	width   int
+	current int
+	total   int
+	message string
 }
 
 // NewProgressBar creates a new progress bar

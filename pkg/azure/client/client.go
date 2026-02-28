@@ -96,7 +96,6 @@ func NewClientWithConfig(cfg *config.Config) (*Client, error) {
 	}, nil
 }
 
-
 func GetHttpClient() *http.Client {
 	return httpClient
 }
