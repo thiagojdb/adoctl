@@ -1,8 +1,8 @@
 # adoctl - Azure DevOps Control Tool
 
-[![CI](https://github.com/USER/adoctl/workflows/CI/badge.svg)](https://github.com/USER/adoctl/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/USER/adoctl)](https://goreportcard.com/report/github.com/USER/adoctl)
-[![codecov](https://codecov.io/gh/USER/adoctl/branch/main/graph/badge.svg)](https://codecov.io/gh/USER/adoctl)
+[![CI](https://github.com/thiagojdb/adoctl/workflows/CI/badge.svg)](https://github.com/thiagojdb/adoctl/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/thiagojdb/adoctl)](https://goreportcard.com/report/github.com/thiagojdb/adoctl)
+[![codecov](https://codecov.io/gh/thiagojdb/adoctl/branch/main/graph/badge.svg)](https://codecov.io/gh/thiagojdb/adoctl)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 CLI tool for managing Azure DevOps workflows. Supports creating PRs, generating reports, monitoring builds/deployments, work item management, git hooks integration, and multi-profile configuration. Uses SQLite caching and XDG config directory standards.
