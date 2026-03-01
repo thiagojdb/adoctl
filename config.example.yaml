@@ -1,0 +1,94 @@
+# adoctl configuration file
+# Location: ~/.config/adoctl/config.yaml
+
+azure:
+  # Your Azure DevOps organization
+  organization: "YourOrganization"
+
+  # Your project name
+  project: "YourProject"
+
+  # Personal Access Token (PAT)
+  # Recommended: Leave empty and use AZURE_PAT environment variable
+  # personal_access_token: ""
+
+  # Azure DevOps API version (optional, defaults to 7.1)
+  api_version: "7.1"
+
+threadpool:
+  # Number of parallel processes for concurrent operations (default: 32)
+  # Can also be set via ADOCTL_THREADPOOL_SIZE environment variable
+  # parallel_processes: 32
+
+# Notification settings
+notifications:
+  # Enable/disable notifications globally
+  enabled: false
+
+  # How often to check for updates (in seconds)
+  poll_interval: 60
+
+  # Desktop notifications
+  desktop:
+    enabled: true
+    linux:
+      urgency: normal  # low, normal, critical
+      expire_time: 5000  # milliseconds
+    macos:
+      sound: default
+    windows:
+      # Uses native Windows notifications
+
+  # Webhook notifications (optional)
+  webhooks:
+    # Slack webhook example
+    - name: "slack-alerts"
+      enabled: false
+      type: slack
+      url: "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+      # Optional: only send specific events
+      events: ["pr_review", "build_failed"]
+    
+    # Microsoft Teams webhook example
+    - name: "teams-channel"
+      enabled: false
+      type: teams
+      url: "https://outlook.office.com/webhook/YOUR/WEBHOOK/URL"
+    
+    # Discord webhook example
+    - name: "discord"
+      enabled: false
+      type: discord
+      url: "https://discord.com/api/webhooks/YOUR/WEBHOOK/TOKEN"
+
+  # Event-specific settings
+  events:
+    pr_created:
+      enabled: true
+      desktop: true
+    
+    pr_review:
+      enabled: true
+      desktop: true
+    
+    pr_merged:
+      enabled: true
+      desktop: true
+    
+    pr_abandoned:
+      enabled: false
+    
+    build_completed:
+      enabled: true
+      desktop: true
+      # Only notify on failures
+      filter:
+        status: ["failed", "partiallySucceeded"]
+    
+    build_failed:
+      enabled: true
+      desktop: true
+    
+    merge_conflict:
+      enabled: true
+      desktop: true
