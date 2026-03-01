@@ -173,13 +173,13 @@ func processSingleWorkItemWithCopy(c *client.Client, id int, outputDir string) (
 	attachmentsDir := filepath.Join(workItemDir, "attachments")
 	markdownFile := filepath.Join(workItemDir, fmt.Sprintf("%s.md", title))
 
-	if err := os.MkdirAll(attachmentsDir, 0755); err != nil {
+	if err := os.MkdirAll(attachmentsDir, 0750); err != nil {
 		return workItemResult{}, fmt.Errorf("failed to create directories: %w", err)
 	}
 
 	markdownContent := generateMarkdown(workItem, comments, relations, workItemDir, c)
 
-	if err := os.WriteFile(markdownFile, []byte(markdownContent), 0644); err != nil {
+	if err := os.WriteFile(markdownFile, []byte(markdownContent), 0600); err != nil {
 		return workItemResult{}, fmt.Errorf("failed to write markdown file: %w", err)
 	}
 

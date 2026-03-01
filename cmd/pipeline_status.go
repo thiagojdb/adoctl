@@ -399,11 +399,11 @@ func collectPRSummaries(svc *devops.DevOpsService, prIDs []int) []*devops.PRSumm
 	var wg sync.WaitGroup
 
 	type PRJob struct {
+		prID        int
 		builds      []cache.Build
 		deployments []devops.DeploymentStatusInfo
 		pr          *git.GitPullRequest
 		err         error
-		prID        int
 	}
 
 	jobs := make(chan int, len(prIDs))

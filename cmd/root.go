@@ -13,6 +13,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	unknownValue = "unknown"
+)
+
 var (
 	Version   string
 	BuildTime string
@@ -59,11 +63,11 @@ var versionCmd = &cobra.Command{
 		}
 		bt := BuildTime
 		if bt == "" {
-			bt = "unknown"
+			bt = unknownValue
 		}
 		gc := GitCommit
 		if gc == "" {
-			gc = "unknown"
+			gc = unknownValue
 		}
 
 		fmt.Printf("adoctl version %s\n", ver)

@@ -73,9 +73,9 @@ auto-detect the repository and filter by the current branch.`,
 		// If --current-branch is set, auto-detect the current branch
 		sourceBranch := listSourceBranch
 		if listCurrentBranch && sourceBranch == "" {
-			branch, err := git.GetCurrentBranch()
-			if err != nil {
-				return fmt.Errorf("could not determine current branch: %w", err)
+			branch, branchErr := git.GetCurrentBranch()
+			if branchErr != nil {
+				return fmt.Errorf("could not determine current branch: %w", branchErr)
 			}
 			sourceBranch = branch
 			logger.Debug().Str("branch", sourceBranch).Msg("Filtering by current branch")

@@ -18,6 +18,7 @@ linters:
     - gosec         # Security checks
   disable:
     - typecheck     # Disabled: has false positives with external modules
+    - fieldalignment # Disabled: too many issues, mostly stylistic
 
 linters-settings:
   errcheck:

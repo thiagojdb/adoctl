@@ -125,8 +125,9 @@ and CI/build status.`,
 	},
 }
 
-//nolint:unused
 // displayPRStatus displays PR status to terminal (kept for compatibility)
+//
+//nolint:unused
 func displayPRStatus(ctx context.Context, svc *devops.DevOpsService, repoID string, pr models.PullRequest) error {
 	plain, _ := formatPRStatus(ctx, svc, repoID, pr)
 	fmt.Print(plain)

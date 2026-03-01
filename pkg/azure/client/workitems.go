@@ -204,14 +204,14 @@ func (c *Client) DownloadAttachment(ctx context.Context, url, destPath string) e
 	if err != nil {
 		return fmt.Errorf("failed to download attachment: %w", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	data, err := io.ReadAll(reader)
 	if err != nil {
 		return fmt.Errorf("failed to read attachment data: %w", err)
 	}
 
-	return os.WriteFile(destPath, data, 0644)
+	return os.WriteFile(destPath, data, 0600)
 }
 
 func extractAttachmentIDFromURL(url string) (*uuid.UUID, error) {

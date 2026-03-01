@@ -10,12 +10,10 @@ import (
 
 type WatchConfig struct {
 	IntervalSec int
+	OnTick      func()
 	RefreshFunc func() error
 	ClearScreen func()
 	OnError     func(error)
-	OnTick      func()
-	refreshFunc func() error
-	clearScreen func()
 }
 
 func NewWatchCommand(name, short, long string, cfg WatchConfig) *cobra.Command {
