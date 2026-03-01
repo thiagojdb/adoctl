@@ -9,6 +9,11 @@ import (
 	"github.com/fatih/color"
 )
 
+const (
+	responseYes = "yes"
+	responseY   = "y"
+)
+
 // IsDryRun returns true if dry-run mode is enabled
 func IsDryRun() bool {
 	return dryRunFlag
@@ -45,7 +50,7 @@ func ConfirmPrompt(message string) (bool, error) {
 	}
 
 	yellow := color.New(color.FgYellow)
-	yellow.Printf("%s [y/N]: ", message)
+	_, _ = yellow.Printf("%s [y/N]: ", message)
 
 	reader := bufio.NewReader(os.Stdin)
 	response, err := reader.ReadString('\n')
@@ -54,7 +59,7 @@ func ConfirmPrompt(message string) (bool, error) {
 	}
 
 	response = strings.TrimSpace(strings.ToLower(response))
-	return response == "y" || response == "yes", nil
+	return response == responseY || response == responseYes, nil
 }
 
 // ConfirmDestructive prompts for confirmation before a destructive action
@@ -65,7 +70,7 @@ func ConfirmDestructive(action string, details map[string]string) (bool, error) 
 	}
 
 	red := color.New(color.FgRed, color.Bold)
-	red.Printf("Warning: You are about to %s\n\n", action)
+	_, _ = red.Printf("Warning: You are about to %s\n\n", action)
 
 	if len(details) > 0 {
 		for key, value := range details {
@@ -84,7 +89,7 @@ func RequireConfirmation(action string, details map[string]string) error {
 		return err
 	}
 	if !confirmed {
-		return fmt.Errorf("operation cancelled by user")
+		return fmt.Errorf("operation canceled by user")
 	}
 	return nil
 }

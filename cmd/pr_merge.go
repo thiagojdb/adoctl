@@ -67,7 +67,7 @@ Supports different merge strategies: noFastForward, squash, rebase, rebaseMerge.
 			return fmt.Errorf("failed to get PR #%d: %w", mergePRID, err)
 		}
 
-		if err := validatePRRepo(pr, repoID, mergePRID); err != nil {
+		if err = validatePRRepo(pr, repoID, mergePRID); err != nil {
 			return err
 		}
 
@@ -103,7 +103,7 @@ Supports different merge strategies: noFastForward, squash, rebase, rebaseMerge.
 			return nil
 		}
 
-		if err := RequireConfirmation("merge this pull request", details); err != nil {
+		if err = RequireConfirmation("merge this pull request", details); err != nil {
 			return err
 		}
 
@@ -173,7 +173,7 @@ var abandonCmd = &cobra.Command{
 			return fmt.Errorf("failed to get PR #%d: %w", abandonPRID, err)
 		}
 
-		if err := validatePRRepo(pr, repoID, abandonPRID); err != nil {
+		if err = validatePRRepo(pr, repoID, abandonPRID); err != nil {
 			return err
 		}
 
@@ -204,7 +204,7 @@ var abandonCmd = &cobra.Command{
 			return nil
 		}
 
-		if err := RequireConfirmation("abandon this pull request", details); err != nil {
+		if err = RequireConfirmation("abandon this pull request", details); err != nil {
 			return err
 		}
 
@@ -235,7 +235,9 @@ func init() {
 	mergeCmd.Flags().BoolVar(&mergeUseGitContext, "use-git-context", true, "Use git context for auto-detection when in a git repository")
 	mergeCmd.Flags().BoolVar(&mergeNoGitContext, "no-git-context", false, "Disable git context auto-detection")
 
-	mergeCmd.MarkFlagRequired("pr")
+	if err := mergeCmd.MarkFlagRequired("pr"); err != nil {
+		panic(err)
+	}
 	mergeCmd.MarkFlagsMutuallyExclusive("repository-name", "repo-id")
 	mergeCmd.MarkFlagsMutuallyExclusive("use-git-context", "no-git-context")
 
@@ -246,7 +248,9 @@ func init() {
 	abandonCmd.Flags().BoolVar(&abandonUseGitContext, "use-git-context", true, "Use git context for auto-detection when in a git repository")
 	abandonCmd.Flags().BoolVar(&abandonNoGitContext, "no-git-context", false, "Disable git context auto-detection")
 
-	abandonCmd.MarkFlagRequired("pr")
+	if err := abandonCmd.MarkFlagRequired("pr"); err != nil {
+		panic(err)
+	}
 	abandonCmd.MarkFlagsMutuallyExclusive("repository-name", "repo-id")
 	abandonCmd.MarkFlagsMutuallyExclusive("use-git-context", "no-git-context")
 }

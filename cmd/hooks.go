@@ -215,7 +215,7 @@ func installHook(hookPath, hookType string) error {
 		return fmt.Errorf("unknown hook type: %s", hookType)
 	}
 
-	return os.WriteFile(hookPath, []byte(script), 0755)
+	return os.WriteFile(hookPath, []byte(script), 0600)
 }
 
 const prePushHook = `#!/bin/sh

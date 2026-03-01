@@ -75,7 +75,11 @@ func linkWorkItemsToPRs(svc *devops.DevOpsService, prRepoMap map[int]string) (in
 
 	for _, prIDStr := range linkPRIDs {
 		prID := 0
-		fmt.Sscanf(prIDStr, "%d", &prID)
+		if _, err := fmt.Sscanf(prIDStr, "%d", &prID); err != nil {
+			logger.Error().Str("pr_id_str", prIDStr).Err(err).Msg("Failed to parse PR ID")
+			failureCount++
+			continue
+		}
 
 		repoID, exists := prRepoMap[prID]
 		if !exists {

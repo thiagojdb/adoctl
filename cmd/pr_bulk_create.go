@@ -128,6 +128,10 @@ func init() {
 	bulkCreateCmd.Flags().StringVar(&bulkCreateDescription, "description", "", "PR description")
 	bulkCreateCmd.Flags().StringArrayVar(&bulkCreateWorkItemIDs, "work-item-id", []string{}, "Work item IDs to link (can be specified multiple times)")
 
-	bulkCreateCmd.MarkFlagRequired("source-branch")
-	bulkCreateCmd.MarkFlagRequired("title")
+	if err := bulkCreateCmd.MarkFlagRequired("source-branch"); err != nil {
+		panic(err)
+	}
+	if err := bulkCreateCmd.MarkFlagRequired("title"); err != nil {
+		panic(err)
+	}
 }

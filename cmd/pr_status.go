@@ -64,7 +64,8 @@ and CI/build status.`,
 		// Resolve branch
 		branch := statusBranch
 		if branch == "" && useGitContext {
-			currentBranch, err := git.GetCurrentBranch()
+			var currentBranch string
+			currentBranch, err = git.GetCurrentBranch()
 			if err != nil {
 				return fmt.Errorf("could not determine current branch: %w", err)
 			}
@@ -124,6 +125,7 @@ and CI/build status.`,
 	},
 }
 
+//nolint:unused
 // displayPRStatus displays PR status to terminal (kept for compatibility)
 func displayPRStatus(ctx context.Context, svc *devops.DevOpsService, repoID string, pr models.PullRequest) error {
 	plain, _ := formatPRStatus(ctx, svc, repoID, pr)

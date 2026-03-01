@@ -117,7 +117,7 @@ func outputReport(ctx context.Context, svc *devops.DevOpsService, prs []models.P
 
 	// Handle file output
 	if reportOutput != "" {
-		err := os.WriteFile(reportOutput, []byte(report), 0644)
+		err := os.WriteFile(reportOutput, []byte(report), 0600)
 		if err != nil {
 			return fmt.Errorf("error writing to file: %w", err)
 		}

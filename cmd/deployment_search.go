@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"adoctl/pkg/cache"
 	"adoctl/pkg/devops"
@@ -50,7 +49,9 @@ var searchDeploymentsCmd = &cobra.Command{
   # Filter by release name
   adoctl deployment search --release-name "Release 1.0"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		syncDeploymentsCmd.RunE(cmd, args)
+		if err := syncDeploymentsCmd.RunE(cmd, args); err != nil {
+			return fmt.Errorf("failed to sync deployments: %w", err)
+		}
 
 		svc, err := devops.NewServiceFromEnv()
 		if err != nil {
@@ -72,64 +73,29 @@ var searchDeploymentsCmd = &cobra.Command{
 func buildDeploymentSearchFilters() map[string]any {
 	filters := make(map[string]any)
 
-	if searchDeploymentsID != 0 {
-		filters["release_id"] = searchDeploymentsID
-	}
-	if searchDeploymentsReleaseName != "" {
-		filters["release_name"] = searchDeploymentsReleaseName
-	}
-	if searchDeploymentsStatus != "" {
-		filters["status"] = searchDeploymentsStatus
-	}
-	if searchDeploymentsRepository != "" {
-		filters["repository"] = searchDeploymentsRepository
-	}
-	if searchDeploymentsBranch != "" {
-		filters["branch"] = searchDeploymentsBranch
-	}
-	if searchDeploymentsStartTimeFrom != "" {
-		if t, err := time.Parse(time.RFC3339, searchDeploymentsStartTimeFrom); err == nil {
-			filters["start_time_from"] = t
-		}
-	}
-	if searchDeploymentsStartTimeTo != "" {
-		if t, err := time.Parse(time.RFC3339, searchDeploymentsStartTimeTo); err == nil {
-			filters["start_time_to"] = t
-		}
-	}
-	if searchDeploymentsEndTimeFrom != "" {
-		if t, err := time.Parse(time.RFC3339, searchDeploymentsEndTimeFrom); err == nil {
-			filters["end_time_from"] = t
-		}
-	}
-	if searchDeploymentsEndTimeTo != "" {
-		if t, err := time.Parse(time.RFC3339, searchDeploymentsEndTimeTo); err == nil {
-			filters["end_time_to"] = t
-		}
-	}
-	if searchDeploymentsArtifactDateFrom != "" {
-		if t, err := time.Parse(time.RFC3339, searchDeploymentsArtifactDateFrom); err == nil {
-			filters["artifact_date_from"] = t
-		}
-	}
-	if searchDeploymentsArtifactDateTo != "" {
-		if t, err := time.Parse(time.RFC3339, searchDeploymentsArtifactDateTo); err == nil {
-			filters["artifact_date_to"] = t
-		}
-	}
-	if searchDeploymentsHasEndTime != "" {
-		switch searchDeploymentsHasEndTime {
-		case "true":
-			filters["has_end_time"] = true
-		case "false":
-			filters["has_end_time"] = false
-		}
-	}
-	if searchDeploymentsLimit != 0 {
-		filters["limit"] = searchDeploymentsLimit
-	}
+	addStringFilter(filters, "release_name", searchDeploymentsReleaseName)
+	addStringFilter(filters, "status", searchDeploymentsStatus)
+	addStringFilter(filters, "repository", searchDeploymentsRepository)
+	addStringFilter(filters, "branch", searchDeploymentsBranch)
+	addDeploymentTimeFilters(filters)
+	addArtifactDateFilters(filters)
+	addEndTimeFilter(filters)
+	addIntFilter(filters, "release_id", searchDeploymentsID)
+	addIntFilter(filters, "limit", searchDeploymentsLimit)
 
 	return filters
+}
+
+func addDeploymentTimeFilters(filters map[string]any) {
+	parseAndAddTime(filters, "start_time_from", searchDeploymentsStartTimeFrom)
+	parseAndAddTime(filters, "start_time_to", searchDeploymentsStartTimeTo)
+	parseAndAddTime(filters, "end_time_from", searchDeploymentsEndTimeFrom)
+	parseAndAddTime(filters, "end_time_to", searchDeploymentsEndTimeTo)
+}
+
+func addArtifactDateFilters(filters map[string]any) {
+	parseAndAddTime(filters, "artifact_date_from", searchDeploymentsArtifactDateFrom)
+	parseAndAddTime(filters, "artifact_date_to", searchDeploymentsArtifactDateTo)
 }
 
 func outputDeployments(deployments []cache.Deployment, shouldCopy bool) error {

@@ -12,14 +12,14 @@ import (
 
 // GitContext holds information about the current git repository context
 type GitContext struct {
-	IsGitRepo    bool
+	RemoteInfo   *git.RemoteInfo
 	Branch       string
 	RemoteURL    string
-	RemoteInfo   *git.RemoteInfo
 	RepoID       string
 	RepoName     string
 	WorkItemID   string
 	RecentCommit string
+	IsGitRepo    bool
 }
 
 // GetGitContext detects and returns the current git context

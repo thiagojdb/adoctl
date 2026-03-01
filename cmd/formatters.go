@@ -30,8 +30,8 @@ const (
 
 // OutputWriter handles structured output formatting
 type OutputWriter struct {
-	format OutputFormat
 	writer io.Writer
+	format OutputFormat
 }
 
 // NewOutputWriter creates a new output writer with the specified format
@@ -70,7 +70,9 @@ func (w *OutputWriter) Write(data interface{}) error {
 		return encoder.Encode(data)
 	case FormatYAML:
 		encoder := yaml.NewEncoder(w.writer)
-		defer encoder.Close()
+		defer func() {
+			_ = encoder.Close()
+		}()
 		return encoder.Encode(data)
 	default:
 		// Table format is handled by individual commands
@@ -165,7 +167,7 @@ func OutputWithCopy(writer io.Writer, terminalContent, clipboardContent string, 
 		if err := CopyToClipboard(clipboardContent); err != nil {
 			return fmt.Errorf("failed to copy to clipboard: %w", err)
 		}
-		fmt.Fprintln(writer, "\n✓ Copied to clipboard!")
+		_, _ = fmt.Fprintln(writer, "\n✓ Copied to clipboard!")
 	}
 
 	return nil

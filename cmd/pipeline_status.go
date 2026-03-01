@@ -122,6 +122,7 @@ func deduplicatePRs(prs []int) []int {
 	return unique
 }
 
+//nolint:unused
 func displayDetailedFormat(ctx context.Context, svc *devops.DevOpsService, prIDs []int) error {
 	return displayDetailedFormatWithCopy(ctx, svc, prIDs, false)
 }
@@ -334,6 +335,7 @@ func watchDetailedFormat(ctx context.Context, svc *devops.DevOpsService, prIDs [
 	}
 }
 
+//nolint:unused
 func displayModernFormat(svc *devops.DevOpsService, prIDs []int) error {
 	return displayModernFormatWithCopy(svc, prIDs, false)
 }
@@ -397,11 +399,11 @@ func collectPRSummaries(svc *devops.DevOpsService, prIDs []int) []*devops.PRSumm
 	var wg sync.WaitGroup
 
 	type PRJob struct {
-		prID        int
-		pr          *git.GitPullRequest
 		builds      []cache.Build
 		deployments []devops.DeploymentStatusInfo
+		pr          *git.GitPullRequest
 		err         error
+		prID        int
 	}
 
 	jobs := make(chan int, len(prIDs))
@@ -553,7 +555,7 @@ func readPRsFromFile(filename string) ([]int, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	var prs []int
 	numberPattern := regexp.MustCompile(`^\s*(\d+)\s*$`)

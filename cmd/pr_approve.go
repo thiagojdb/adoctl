@@ -85,7 +85,7 @@ var approveCmd = &cobra.Command{
 			return fmt.Errorf("failed to get PR #%d: %w", approvePRID, err)
 		}
 
-		if err := validatePRRepo(pr, repoID, approvePRID); err != nil {
+		if err = validatePRRepo(pr, repoID, approvePRID); err != nil {
 			return err
 		}
 
@@ -123,7 +123,9 @@ func init() {
 	approveCmd.Flags().IntVar(&approvePRID, "pr", 0, "Pull request ID")
 	approveCmd.Flags().BoolVar(&approveUseGitContext, "use-git-context", true, "Use git context for auto-detection when in a git repository")
 	approveCmd.Flags().BoolVar(&approveNoGitContext, "no-git-context", false, "Disable git context auto-detection")
-	approveCmd.MarkFlagRequired("pr")
+	if err := approveCmd.MarkFlagRequired("pr"); err != nil {
+		panic(err)
+	}
 	approveCmd.MarkFlagsMutuallyExclusive("repository-name", "repo-id")
 	approveCmd.MarkFlagsMutuallyExclusive("use-git-context", "no-git-context")
 }
