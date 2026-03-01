@@ -459,60 +459,50 @@ func (cm *Manager) GetBuildByID(buildID int) (*Build, error) {
 func (cm *Manager) SearchBuilds(filters map[string]any) ([]Build, error) {
 	query := SELECT_BUILDS_WHERE
 	args := []any{}
-	argIndex := 1
 
 	if buildID, ok := filters["build_id"].(int); ok {
 		query += " AND build_id = ?"
 		args = append(args, buildID)
-		argIndex++
 	}
 
 	if branch, ok := filters["branch"].(string); ok && branch != "" {
 		query += " AND branch = ?"
 		args = append(args, branch)
-		argIndex++
 	}
 
 	if repository, ok := filters["repository"].(string); ok && repository != "" {
 		query += " AND repository = ?"
 		args = append(args, repository)
-		argIndex++
 	}
 
 	if commit, ok := filters["commit"].(string); ok && commit != "" {
 		query += " AND source_version LIKE ?"
 		args = append(args, commit+"%")
-		argIndex++
 	}
 
 	if status, ok := filters["status"].(string); ok && status != "" {
 		query += " AND status = ?"
 		args = append(args, status)
-		argIndex++
 	}
 
 	if startTimeFrom, ok := filters["start_time_from"].(time.Time); ok {
 		query += " AND start_time >= ?"
 		args = append(args, startTimeFrom)
-		argIndex++
 	}
 
 	if startTimeTo, ok := filters["start_time_to"].(time.Time); ok {
 		query += " AND start_time <= ?"
 		args = append(args, startTimeTo)
-		argIndex++
 	}
 
 	if endTimeFrom, ok := filters["end_time_from"].(time.Time); ok {
 		query += " AND end_time >= ?"
 		args = append(args, endTimeFrom)
-		argIndex++
 	}
 
 	if endTimeTo, ok := filters["end_time_to"].(time.Time); ok {
 		query += " AND end_time <= ?"
 		args = append(args, endTimeTo)
-		argIndex++
 	}
 
 	if hasEndTime, ok := filters["has_end_time"].(bool); ok {
@@ -521,7 +511,6 @@ func (cm *Manager) SearchBuilds(filters map[string]any) ([]Build, error) {
 		} else {
 			query += " AND end_time IS NULL"
 		}
-		argIndex++
 	}
 
 	query += " ORDER BY start_time DESC"
@@ -639,66 +628,55 @@ func (cm *Manager) SaveDeployment(deployment Deployment) error {
 func (cm *Manager) SearchDeployments(filters map[string]any) ([]Deployment, error) {
 	query := SELECT_DEPLOYMENT_WHERE
 	args := []any{}
-	argIndex := 1
 
 	if releaseID, ok := filters["release_id"].(int); ok {
 		query += " AND release_id = ?"
 		args = append(args, releaseID)
-		argIndex++
 	}
 
 	if buildID, ok := filters["build_id"].(int); ok {
 		query += " AND build_id = ?"
 		args = append(args, buildID)
-		argIndex++
 	}
 
 	if releaseName, ok := filters["release_name"].(string); ok && releaseName != "" {
 		query += " AND release_name LIKE ?"
 		args = append(args, "%"+releaseName+"%")
-		argIndex++
 	}
 
 	if status, ok := filters["status"].(string); ok && status != "" {
 		query += " AND status = ?"
 		args = append(args, status)
-		argIndex++
 	}
 
 	if repository, ok := filters["repository"].(string); ok && repository != "" {
 		query += " AND repository = ?"
 		args = append(args, repository)
-		argIndex++
 	}
 
 	if branch, ok := filters["branch"].(string); ok && branch != "" {
 		query += " AND branch = ?"
 		args = append(args, branch)
-		argIndex++
 	}
 
 	if startTimeFrom, ok := filters["start_time_from"].(time.Time); ok {
 		query += " AND start_time >= ?"
 		args = append(args, startTimeFrom)
-		argIndex++
 	}
 
 	if startTimeTo, ok := filters["start_time_to"].(time.Time); ok {
 		query += " AND start_time <= ?"
 		args = append(args, startTimeTo)
-		argIndex++
 	}
 
 	if endTimeFrom, ok := filters["end_time_from"].(time.Time); ok {
 		query += " AND end_time >= ?"
 		args = append(args, endTimeFrom)
-		argIndex++
 	}
 
 	if endTimeTo, ok := filters["end_time_to"].(time.Time); ok {
 		query += " AND end_time <= ?"
 		args = append(args, endTimeTo)
-		argIndex++
 	}
 
 	if hasEndTime, ok := filters["has_end_time"].(bool); ok {
@@ -707,7 +685,6 @@ func (cm *Manager) SearchDeployments(filters map[string]any) ([]Deployment, erro
 		} else {
 			query += " AND end_time IS NULL"
 		}
-		argIndex++
 	}
 
 	query += " ORDER BY start_time DESC"

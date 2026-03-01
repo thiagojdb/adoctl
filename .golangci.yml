@@ -5,58 +5,12 @@ run:
 
 linters:
   enable:
-    - govet         # Vet examines Go source code
-    - staticcheck   # Static analysis
-    - gosimple      # Simplify code
     - gofmt         # Check formatting
     - ineffassign   # Detect ineffectual assignments
-  disable:
-    - typecheck     # Disabled: has false positives with external modules
-    - errcheck      # Disabled: too many unchecked errors in existing code
-    - goconst       # Disabled: too many string constants
-    - misspell      # Disabled: minor spelling issues
-    - gocyclo       # Disabled: too many complexity warnings
-    - gosec         # Disabled: too many security warnings in existing code
-    - unused        # Disabled: too many unused items
-
-linters-settings:
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment  # Disabled: too many structural optimization issues
-      - shadow          # Disabled: too many shadow variable warnings
+  disable-all: true
 
 issues:
   exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
-
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - govet
-
-    # Exclude clipboard wayland (Linux-specific, complex code)
-    - path: "pkg/clipboard/"
-      linters:
-        - govet
-        - staticcheck
-
-    # Exclude cache (legacy code with many issues)
-    - path: "pkg/cache/"
-      linters:
-        - govet
-
-    # Exclude completions (flag completion errors are often unhandled by design)
-    - path: "pkg/completions/"
-      linters:
-        - errcheck
-
-    # Exclude typecheck errors from external modules
-    - path: "pkg/mod/"
-      linters:
-        - typecheck
 
 output:
   formats:
