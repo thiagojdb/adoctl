@@ -30,22 +30,18 @@ func (b *CommandBuilder) WithExample(example string) *CommandBuilder {
 
 func (b *CommandBuilder) WithTimeout() *CommandBuilder {
 	original := b.cmd.RunE
-	if original == nil {
-		original = func(cmd *cobra.Command, args []string) error { return nil }
-	}
 	b.cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		_, cancel := GetContext()
 		defer cancel()
-		return original(cmd, args)
+		if original != nil {
+			return original(cmd, args)
+		}
+		return nil
 	}
 	return b
 }
 
 func (b *CommandBuilder) WithPRManager(fn func(*devops.DevOpsService) error) *CommandBuilder {
-	original := b.cmd.RunE
-	if original == nil {
-		original = func(cmd *cobra.Command, args []string) error { return nil }
-	}
 	b.cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		svc, err := devops.NewServiceFromEnv()
 		if err != nil {
@@ -58,10 +54,6 @@ func (b *CommandBuilder) WithPRManager(fn func(*devops.DevOpsService) error) *Co
 }
 
 func (b *CommandBuilder) WithDeploymentManager(fn func(*devops.DevOpsService) error) *CommandBuilder {
-	original := b.cmd.RunE
-	if original == nil {
-		original = func(cmd *cobra.Command, args []string) error { return nil }
-	}
 	b.cmd.RunE = func(cmd *cobra.Command, args []string) error {
 		svc, err := devops.NewServiceFromEnv()
 		if err != nil {

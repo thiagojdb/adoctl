@@ -15,9 +15,9 @@ linters:
     - gocyclo       # Check cyclomatic complexity
     - gofmt         # Check formatting
     - ineffassign   # Detect ineffectual assignments
-    - typecheck     # Type checking
     - gosec         # Security checks
-  disable: []
+  disable:
+    - typecheck     # Disabled: has false positives with external modules
 
 linters-settings:
   errcheck:
@@ -62,6 +62,11 @@ issues:
     - linters:
         - lll
       source: "^//go:generate "
+
+    # Exclude typecheck errors from external modules
+    - path: "pkg/mod/"
+      linters:
+        - typecheck
 
 output:
   formats:

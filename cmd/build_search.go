@@ -52,7 +52,9 @@ var searchBuildsCmd = &cobra.Command{
   # Save results to file
   adoctl build search --status completed --output builds.json --json`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		syncBuildsCmd.RunE(cmd, args)
+		if err := syncBuildsCmd.RunE(cmd, args); err != nil {
+			return fmt.Errorf("failed to sync builds: %w", err)
+		}
 
 		svc, err := devops.NewServiceFromEnv()
 		if err != nil {
@@ -78,55 +80,53 @@ var searchBuildsCmd = &cobra.Command{
 func buildSearchFilters() map[string]any {
 	filters := make(map[string]any)
 
-	if searchBuildsID != 0 {
-		filters["build_id"] = searchBuildsID
-	}
-	if searchBuildsBranch != "" {
-		filters["branch"] = searchBuildsBranch
-	}
-	if searchBuildsRepository != "" {
-		filters["repository"] = searchBuildsRepository
-	}
-	if searchBuildsCommit != "" {
-		filters["commit"] = searchBuildsCommit
-	}
-	if searchBuildsStatus != "" {
-		filters["status"] = searchBuildsStatus
-	}
-	if searchBuildsStartTimeFrom != "" {
-		if t, err := time.Parse(time.RFC3339, searchBuildsStartTimeFrom); err == nil {
-			filters["start_time_from"] = t
-		}
-	}
-	if searchBuildsStartTimeTo != "" {
-		if t, err := time.Parse(time.RFC3339, searchBuildsStartTimeTo); err == nil {
-			filters["start_time_to"] = t
-		}
-	}
-	if searchBuildsEndTimeFrom != "" {
-		if t, err := time.Parse(time.RFC3339, searchBuildsEndTimeFrom); err == nil {
-			filters["end_time_from"] = t
-		}
-	}
-	if searchBuildsEndTimeTo != "" {
-		if t, err := time.Parse(time.RFC3339, searchBuildsEndTimeTo); err == nil {
-			filters["end_time_to"] = t
-		}
-	}
-	if searchBuildsHasEndTime != "" {
-		switch searchBuildsHasEndTime {
-		case "true":
-			filters["has_end_time"] = true
-		case "false":
-			filters["has_end_time"] = false
-		default:
-		}
-	}
-	if searchBuildsLimit != 0 {
-		filters["limit"] = searchBuildsLimit
-	}
+	addStringFilter(filters, "branch", searchBuildsBranch)
+	addStringFilter(filters, "repository", searchBuildsRepository)
+	addStringFilter(filters, "commit", searchBuildsCommit)
+	addStringFilter(filters, "status", searchBuildsStatus)
+	addTimeFilters(filters)
+	addEndTimeFilter(filters)
+	addIntFilter(filters, "build_id", searchBuildsID)
+	addIntFilter(filters, "limit", searchBuildsLimit)
 
 	return filters
+}
+
+func addStringFilter(filters map[string]any, key, value string) {
+	if value != "" {
+		filters[key] = value
+	}
+}
+
+func addIntFilter(filters map[string]any, key string, value int) {
+	if value != 0 {
+		filters[key] = value
+	}
+}
+
+func addTimeFilters(filters map[string]any) {
+	parseAndAddTime(filters, "start_time_from", searchBuildsStartTimeFrom)
+	parseAndAddTime(filters, "start_time_to", searchBuildsStartTimeTo)
+	parseAndAddTime(filters, "end_time_from", searchBuildsEndTimeFrom)
+	parseAndAddTime(filters, "end_time_to", searchBuildsEndTimeTo)
+}
+
+func parseAndAddTime(filters map[string]any, key, value string) {
+	if value == "" {
+		return
+	}
+	if t, err := time.Parse(time.RFC3339, value); err == nil {
+		filters[key] = t
+	}
+}
+
+func addEndTimeFilter(filters map[string]any) {
+	switch searchBuildsHasEndTime {
+	case "true":
+		filters["has_end_time"] = true
+	case "false":
+		filters["has_end_time"] = false
+	}
 }
 
 func outputBuildsAsJSON(builds []cache.Build, shouldCopy bool) error {
@@ -156,7 +156,7 @@ func outputBuildsAsJSON(builds []cache.Build, shouldCopy bool) error {
 
 	jsonOutputData, _ := json.MarshalIndent(result, "", "  ")
 	if searchBuildsOutput != "" {
-		err := os.WriteFile(searchBuildsOutput, jsonOutputData, 0644)
+		err := os.WriteFile(searchBuildsOutput, jsonOutputData, 0600)
 		if err != nil {
 			return fmt.Errorf("error writing to file: %w", err)
 		}

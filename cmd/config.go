@@ -231,15 +231,25 @@ func init() {
 	configProfilesAddCmd.Flags().StringVar(&configOrg, "org", "", "Azure DevOps organization (required)")
 	configProfilesAddCmd.Flags().StringVar(&configProject, "project", "", "Azure DevOps project (required)")
 	configProfilesAddCmd.Flags().StringVar(&configToken, "token", "", "Personal access token (optional, prefer env var)")
-	configProfilesAddCmd.MarkFlagRequired("name")
-	configProfilesAddCmd.MarkFlagRequired("org")
-	configProfilesAddCmd.MarkFlagRequired("project")
+	if err := configProfilesAddCmd.MarkFlagRequired("name"); err != nil {
+		panic(err)
+	}
+	if err := configProfilesAddCmd.MarkFlagRequired("org"); err != nil {
+		panic(err)
+	}
+	if err := configProfilesAddCmd.MarkFlagRequired("project"); err != nil {
+		panic(err)
+	}
 
 	configProfilesRemoveCmd.Flags().StringVar(&configProfileName, "name", "", "Profile name (required)")
-	configProfilesRemoveCmd.MarkFlagRequired("name")
+	if err := configProfilesRemoveCmd.MarkFlagRequired("name"); err != nil {
+		panic(err)
+	}
 
 	configProfilesUseCmd.Flags().StringVar(&configProfileName, "name", "", "Profile name (required)")
-	configProfilesUseCmd.MarkFlagRequired("name")
+	if err := configProfilesUseCmd.MarkFlagRequired("name"); err != nil {
+		panic(err)
+	}
 
 	// Add commands
 	configProfilesCmd.AddCommand(configProfilesListCmd)

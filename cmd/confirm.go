@@ -22,7 +22,7 @@ func IsAssumeYes() bool {
 // PrintDryRun prints a message indicating what would happen in dry-run mode
 func PrintDryRun(format string, args ...interface{}) {
 	yellow := color.New(color.FgYellow, color.Bold)
-	yellow.Print("[DRY-RUN] ")
+	_, _ = yellow.Print("[DRY-RUN] ")
 	fmt.Printf(format+"\n", args...)
 }
 
@@ -31,9 +31,9 @@ func PrintDryRunAction(action string, details map[string]string) {
 	yellow := color.New(color.FgYellow, color.Bold)
 	cyan := color.New(color.FgCyan)
 
-	yellow.Printf("[DRY-RUN] Would %s:\n", action)
+	_, _ = yellow.Printf("[DRY-RUN] Would %s:\n", action)
 	for key, value := range details {
-		cyan.Printf("  %s: ", key)
+		_, _ = cyan.Printf("  %s: ", key)
 		fmt.Println(value)
 	}
 }
