@@ -18,7 +18,6 @@ linters:
     - gosec         # Security checks
   disable:
     - typecheck     # Disabled: has false positives with external modules
-    - fieldalignment # Disabled: too many issues, mostly stylistic
 
 linters-settings:
   errcheck:
@@ -27,6 +26,8 @@ linters-settings:
 
   govet:
     enable-all: true
+    disable:
+      - fieldalignment  # Disabled: too many structural optimization issues
 
   gocyclo:
     min-complexity: 15
