@@ -83,9 +83,11 @@ func (c *Client) GetWorkItems(ctx context.Context, ids []int) ([]map[string]any,
 func (c *Client) GetWorkItemRelations(ctx context.Context, id int) ([]map[string]any, error) {
 	project := c.GetProject()
 	idPtr := &id
+	expand := workitemtracking.WorkItemExpandValues.Relations
 	args := workitemtracking.GetWorkItemArgs{
 		Project: &project,
 		Id:      idPtr,
+		Expand:  &expand,
 	}
 
 	wi, err := c.WorkItemClient.GetWorkItem(ctx, args)
