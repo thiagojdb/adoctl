@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const DefaultParallelProcesses = 32
+const DefaultParallelProcesses = 48
 
 // Profile represents a named Azure DevOps configuration
 type Profile struct {
@@ -178,6 +178,26 @@ func getEnvInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+// GetParallelProcesses returns the configured number of parallel processes.
+// It checks (in order): ADOCTL_THREADPOOL_SIZE env var, config file threadpool.parallel_processes, default (32)
+func GetParallelProcesses() int {
+	// Check environment variable first
+	if value := os.Getenv("ADOCTL_THREADPOOL_SIZE"); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil {
+			return parsed
+		}
+	}
+
+	// Try to load from config file
+	cfg, err := Load()
+	if err == nil && cfg.ThreadPool.ParallelProcesses > 0 {
+		return cfg.ThreadPool.ParallelProcesses
+	}
+
+	// Return default
+	return DefaultParallelProcesses
 }
 
 func loadFromPath(configPath string, profileName ...string) (*Config, error) {

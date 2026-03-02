@@ -63,7 +63,7 @@ func bulkCreatePRs(ctx context.Context, svc *devops.DevOpsService, repos []model
 	allResults := []devops.BulkCreateResult{}
 	var resultsMutex sync.Mutex
 	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, config.DefaultParallelProcesses)
+	semaphore := make(chan struct{}, config.GetParallelProcesses())
 
 	for _, targetBranch := range bulkCreateTargetBranches {
 		wg.Add(1)

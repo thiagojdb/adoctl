@@ -61,7 +61,7 @@ func (s *DevOpsService) buildPRGroups(
 				PRID   int
 			}{repoID, prID})
 		}
-		workItemsCounts = checker.GetWorkItemsCountsBatch(ctx, items, config.DefaultParallelProcesses)
+		workItemsCounts = checker.GetWorkItemsCountsBatch(ctx, items, config.GetParallelProcesses())
 	}
 
 	for _, pr := range filteredPRs {

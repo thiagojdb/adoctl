@@ -43,15 +43,30 @@ func (c *Client) GetPullRequest(ctx context.Context, pullRequestID int) (*git.Gi
 	return c.GitClient.GetPullRequestById(ctx, args)
 }
 
-func (c *Client) GetPullRequests(ctx context.Context, repositoryID string, criteria *git.GitPullRequestSearchCriteria) ([]git.GitPullRequest, error) {
+func (c *Client) GetPullRequests(ctx context.Context, repositoryID *string, criteria *git.GitPullRequestSearchCriteria) ([]git.GitPullRequest, error) {
 	args := git.GetPullRequestsArgs{
-		RepositoryId:   &repositoryID,
+		RepositoryId:   repositoryID,
 		SearchCriteria: criteria,
 	}
 
 	result, err := c.GitClient.GetPullRequests(ctx, args)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pull requests: %w", err)
+	}
+
+	return *result, nil
+}
+
+func (c *Client) GetPullRequestsByProject(ctx context.Context, criteria *git.GitPullRequestSearchCriteria) ([]git.GitPullRequest, error) {
+	project := c.GetProject()
+	args := git.GetPullRequestsByProjectArgs{
+		Project:        &project,
+		SearchCriteria: criteria,
+	}
+
+	result, err := c.GitClient.GetPullRequestsByProject(ctx, args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pull requests by project: %w", err)
 	}
 
 	return *result, nil

@@ -239,7 +239,7 @@ func (c *Client) BulkGetPullRequestsByRepo(ctx context.Context, repoIDs []string
 			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 
-			prs, err := c.GetPullRequests(ctx, repoID, criteria)
+			prs, err := c.GetPullRequests(ctx, &repoID, criteria)
 			mutex.Lock()
 			if err != nil {
 				logger.Warn().

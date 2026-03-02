@@ -84,8 +84,8 @@ auto-detect the repository and filter by the current branch.`,
 		// Resolve repository
 		repoID, _, err := ResolveRepoID(svc, listRepoName, "", useGitContext)
 		if err != nil {
-			// If no repo specified and we're not using git context, list all PRs across repos
-			if listRepoName == "" && !useGitContext {
+			// If no repo specified, list all PRs across repos
+			if listRepoName == "" {
 				repoID = ""
 			} else {
 				return fmt.Errorf("could not determine repository: %w", err)

@@ -200,7 +200,7 @@ func (s *DevOpsService) BulkCreatePullRequests(ctx context.Context, sourceBranch
 	results := []BulkCreateResult{}
 	var resultsMutex sync.Mutex
 	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, config.DefaultParallelProcesses)
+	semaphore := make(chan struct{}, config.GetParallelProcesses())
 
 	for _, repo := range repos {
 		wg.Add(1)
@@ -358,16 +358,25 @@ func (s *DevOpsService) ListPullRequests(ctx context.Context, repositoryID, stat
 		criteria.Status = &statusVal
 	}
 
+	// Use server-side filtering for branches when possible
+	// This significantly reduces data transfer and processing time
+	if sourceBranch != "" {
+		sourceRef := fmt.Sprintf("refs/heads/%s", sourceBranch)
+		criteria.SourceRefName = &sourceRef
+	}
+	if targetBranch != "" {
+		targetRef := fmt.Sprintf("refs/heads/%s", targetBranch)
+		criteria.TargetRefName = &targetRef
+	}
+
 	var prs []git.GitPullRequest
 	var err error
 
 	if repositoryID != "" {
-		prs, err = s.client.GetPullRequests(ctx, repositoryID, criteria)
+		prs, err = s.client.GetPullRequests(ctx, &repositoryID, criteria)
 	} else {
-		prs, err = s.client.GetPullRequests(ctx, "", nil)
-		if err != nil {
-			return nil, err
-		}
+		// Use project-level API for much faster queries across all repos
+		prs, err = s.client.GetPullRequestsByProject(ctx, criteria)
 	}
 
 	if err != nil {
@@ -378,32 +387,12 @@ func (s *DevOpsService) ListPullRequests(ctx context.Context, repositoryID, stat
 	for _, pr := range prs {
 		modelPR := models.PullRequestFromAzure(&pr)
 
-		// Apply additional filtering
-		include := true
-
-		if targetBranch != "" {
-			expectedRef := fmt.Sprintf("refs/heads/%s", targetBranch)
-			if !strings.EqualFold(modelPR.TargetBranch, expectedRef) {
-				include = false
-			}
+		// Apply creator filter client-side (API doesn't support it)
+		if creatorID != "" && modelPR.CreatedBy.ID != creatorID {
+			continue
 		}
 
-		if sourceBranch != "" {
-			expectedRef := fmt.Sprintf("refs/heads/%s", sourceBranch)
-			if !strings.EqualFold(modelPR.SourceBranch, expectedRef) {
-				include = false
-			}
-		}
-
-		if creatorID != "" {
-			if modelPR.CreatedBy.ID != creatorID {
-				include = false
-			}
-		}
-
-		if include {
-			result = append(result, modelPR)
-		}
+		result = append(result, modelPR)
 	}
 
 	return result, nil

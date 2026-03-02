@@ -409,7 +409,7 @@ func collectPRSummaries(svc *devops.DevOpsService, prIDs []int) []*devops.PRSumm
 	jobs := make(chan int, len(prIDs))
 	results := make(chan *PRJob, len(prIDs))
 
-	for i := 0; i < config.DefaultParallelProcesses; i++ {
+	for i := 0; i < config.GetParallelProcesses(); i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
