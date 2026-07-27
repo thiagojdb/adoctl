@@ -8,6 +8,7 @@ import (
 	"adoctl/pkg/git"
 	"adoctl/pkg/logger"
 
+	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/webapi"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +23,7 @@ var (
 	createWorkItemIDs   []string
 	createUseGitContext bool
 	createNoGitContext  bool
+	createAutoComplete  bool
 )
 
 var createCmd = &cobra.Command{
@@ -100,13 +102,21 @@ work item IDs from branch names like "feature/PBI-12345".`,
 			logger.Info().Strs("workItemIDs", workItemIDs).Msg("Auto-linked work items from branch name")
 		}
 
+		var autoCompleteSetBy *webapi.IdentityRef
+		if createAutoComplete {
+			autoCompleteSetBy, err = svc.Client().GetCurrentUserIdentity(ctx)
+			if err != nil {
+				return fmt.Errorf("could not determine current user for auto-complete: %w", err)
+			}
+		}
+
 		logger.Debug().
 			Str("sourceBranch", sourceBranch).
 			Str("targetBranch", targetBranch).
 			Str("title", title).
 			Msg("Creating PR")
 
-		result, err := svc.CreatePullRequest(ctx, repoID, sourceBranch, targetBranch, title, createDescription, createReviewers, workItemIDs, true)
+		result, err := svc.CreatePullRequest(ctx, repoID, sourceBranch, targetBranch, title, createDescription, createReviewers, workItemIDs, true, autoCompleteSetBy)
 		if err != nil {
 			return fmt.Errorf("error creating PR: %w", err)
 		}
@@ -164,6 +174,7 @@ func init() {
 	createCmd.Flags().StringArrayVar(&createWorkItemIDs, "work-item-id", []string{}, "Work item IDs to link (can be specified multiple times, auto-extracted from branch name if not specified)")
 	createCmd.Flags().BoolVar(&createUseGitContext, "use-git-context", true, "Use git context for auto-detection when in a git repository")
 	createCmd.Flags().BoolVar(&createNoGitContext, "no-git-context", false, "Disable git context auto-detection")
+	createCmd.Flags().BoolVar(&createAutoComplete, "auto-complete", false, "Set the PR to complete automatically when required checks and policies pass")
 
 	createCmd.MarkFlagsMutuallyExclusive("repository-name", "repo-id")
 	createCmd.MarkFlagsMutuallyExclusive("use-git-context", "no-git-context")

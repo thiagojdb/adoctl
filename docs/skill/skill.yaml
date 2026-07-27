@@ -30,6 +30,10 @@ examples:
       ```bash
       adoctl pr create --repository-name myrepo --source-branch feature --target-branch main --title "My feature"
       ```
+      To enable auto-complete so the PR completes when policies pass:
+      ```bash
+      adoctl pr create --title "My feature" --auto-complete
+      ```
 
   - question: "How do I copy output to clipboard for Teams?"
     answer: |

@@ -14,6 +14,7 @@ import (
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/core"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/git"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/release"
+	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/webapi"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/workitemtracking"
 )
 
@@ -159,4 +160,50 @@ func (c *Client) GetCurrentUser(ctx context.Context) (string, error) {
 	}
 
 	return result.AuthenticatedUser.DisplayName, nil
+}
+
+// GetCurrentUserIdentity returns the authenticated user's identity details.
+func (c *Client) GetCurrentUserIdentity(ctx context.Context) (*webapi.IdentityRef, error) {
+	organizationURL := fmt.Sprintf("https://dev.azure.com/%s", c.config.Organization)
+	reqURL := fmt.Sprintf("%s/_apis/connectionData", organizationURL)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", c.Connection.AuthorizationString)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get user info: status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		AuthenticatedUser struct {
+			ID          string `json:"id"`
+			DisplayName string `json:"displayName"`
+			UniqueName  string `json:"uniqueName"`
+		} `json:"authenticatedUser"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if result.AuthenticatedUser.ID == "" {
+		return nil, fmt.Errorf("could not determine current user identity")
+	}
+
+	return &webapi.IdentityRef{
+		Id:          &result.AuthenticatedUser.ID,
+		DisplayName: &result.AuthenticatedUser.DisplayName,
+		UniqueName:  &result.AuthenticatedUser.UniqueName,
+	}, nil
 }
