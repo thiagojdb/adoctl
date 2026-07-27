@@ -174,7 +174,9 @@ func (s *DevOpsService) CreatePullRequest(ctx context.Context, repositoryID, sou
 		}
 		_, err = s.client.UpdatePullRequest(ctx, repositoryID, *result.PullRequestId, updatePR)
 		if err != nil {
-			return nil, fmt.Errorf("failed to set auto-complete on pull request: %w", err)
+			// PR was created successfully, but auto-complete update failed
+			prModel := models.PullRequestFromAzure(result)
+			return nil, fmt.Errorf("pull request #%d created successfully at %s, but failed to set auto-complete: %w", prModel.ID, prModel.URL, err)
 		}
 	}
 

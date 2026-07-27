@@ -70,12 +70,14 @@ func (c *Client) GetWorkItemsInIteration(ctx context.Context, iterationPath stri
 	project := c.GetProject()
 
 	// Build WIQL query to find work items by iteration path
+	// Escape single quotes in iteration path for WIQL string literals
+	escapedIterationPath := strings.ReplaceAll(iterationPath, "'", "''")
 	wiql := fmt.Sprintf(
 		"SELECT [System.Id], [System.Title], [System.WorkItemType], [System.State], [System.AssignedTo] "+
 			"FROM workitems "+
 			"WHERE [System.IterationPath] = '%s' "+
 			"ORDER BY [System.WorkItemType], [System.Id]",
-		iterationPath,
+		escapedIterationPath,
 	)
 
 	args := workitemtracking.QueryByWiqlArgs{
@@ -247,8 +249,8 @@ func (c *Client) GetWorkItemsWithParents(ctx context.Context, ids []int) ([]map[
 			if relType, ok := rel["rel"].(string); ok && relType == "System.LinkTypes.Hierarchy-Reverse" {
 				// This is a parent link
 				if url, ok := rel["url"].(string); ok {
-					var parentID int
-					if _, err := fmt.Sscanf(url, "%*[^/]/%d", &parentID); err == nil {
+					parentID := ParseWorkItemIDFromURL(url)
+					if parentID > 0 {
 						parentMap[id] = parentID
 					}
 				}
@@ -293,12 +295,14 @@ func (c *Client) GetAllWorkItemsInIterationForUser(ctx context.Context, iteratio
 		userFilter = fmt.Sprintf(" AND [System.AssignedTo] = %s", assignedTo)
 	}
 
+	// Escape single quotes in iteration path for WIQL string literals
+	escapedIterationPath := strings.ReplaceAll(iterationPath, "'", "''")
 	wiql := fmt.Sprintf(
 		"SELECT [System.Id], [System.Title], [System.WorkItemType], [System.State], [System.AssignedTo] "+
 			"FROM workitems "+
 			"WHERE [System.IterationPath] = '%s'%s "+
 			"ORDER BY [System.Id]",
-		iterationPath,
+		escapedIterationPath,
 		userFilter,
 	)
 

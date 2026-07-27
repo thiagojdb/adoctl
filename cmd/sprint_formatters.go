@@ -62,6 +62,9 @@ func getTerminalWidth() int {
 // truncate truncates a string to max display width, adding ellipsis if truncated
 func truncate(s string, maxWidth int) string {
 	if maxWidth <= 3 {
+		if len(s) <= maxWidth {
+			return s
+		}
 		return s[:maxWidth]
 	}
 	w := displayWidth(s)
@@ -451,6 +454,12 @@ func renderWorkItemTreeRow(sb *strings.Builder, item models.WorkItemHierarchy, d
 
 	// Render children with updated tree state
 	if len(item.Children) > 0 {
+		// Grow treeState if needed for this depth
+		if depth >= len(treeState) {
+			newTreeState := make([]bool, depth+10)
+			copy(newTreeState, treeState)
+			treeState = newTreeState
+		}
 		// Mark that the current depth has children (for tree connectors)
 		treeState[depth] = !isLast
 		for i, child := range item.Children {
@@ -510,10 +519,7 @@ func renderWorkItemModern(sb *strings.Builder, item models.WorkItemHierarchy, de
 		stateStyle = color.New(color.FgYellow)
 	}
 
-	title := item.Title
-	if len(title) > 60 {
-		title = title[:57] + "..."
-	}
+	title := truncate(item.Title, 60)
 
 	assigned := ""
 	if item.AssignedTo != "" {

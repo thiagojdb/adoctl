@@ -141,11 +141,11 @@ func normalizeIterationPath(path, project string) string {
 
 	// The API returns paths like "GISS\Iteration\Inovação\Produto\Sprint Name"
 	// But WIQL queries need "GISS\Inovação\Produto\Sprint Name" (without "Iteration")
-	// Remove the "Iteration" folder from the path
-	if strings.HasPrefix(strings.ToLower(path), strings.ToLower(project+`\Iteration`)) {
-		path = project + strings.TrimPrefix(path, project+`\Iteration`)
-		path = strings.TrimPrefix(path, project+`\iteration`)
-		path = strings.TrimPrefix(path, project+`\ITERATION`)
+	// Remove the "Iteration" folder from the path (case-insensitive)
+	iterationPrefix := project + `\Iteration\`
+	if len(path) >= len(iterationPrefix) && strings.EqualFold(path[:len(iterationPrefix)], iterationPrefix) {
+		// Extract the part after "Iteration\"
+		path = project + `\` + path[len(iterationPrefix):]
 	}
 
 	// Clean up any leading backslash
