@@ -17,7 +17,9 @@ var (
 	listTargetBranch  string
 	listSourceBranch  string
 	listCreator       string
+	listTitleRegex    string
 	listTitleFuzzy    string
+	listRepoRegex     string
 	listRepoFuzzy     string
 	listCurrentBranch bool
 	listUseGitContext bool
@@ -54,6 +56,12 @@ auto-detect the repository and filter by the current branch.`,
 
   # List active PRs with fuzzy title search
   adoctl pr list --status active --title-fuzzy "login"
+
+  # List PRs with title regex
+  adoctl pr list --title-regex "^feat:"
+
+  # List PRs for repos matching regex
+  adoctl pr list --repo-regex "^(api|backend)-"
 
   # List PRs for repos matching fuzzy pattern
   adoctl pr list --repo-fuzzy "api"`,
@@ -98,7 +106,9 @@ auto-detect the repository and filter by the current branch.`,
 		}
 
 		prFilter := &filter.PRFilter{
+			TitleRegex:   listTitleRegex,
 			TitleFuzzy:   listTitleFuzzy,
+			RepoRegex:    listRepoRegex,
 			RepoFuzzy:    listRepoFuzzy,
 			SourceBranch: sourceBranch,
 			TargetBranch: listTargetBranch,
@@ -136,7 +146,9 @@ func init() {
 	listCmd.Flags().StringVar(&listTargetBranch, "target-branch", "", "Filter by target branch")
 	listCmd.Flags().StringVar(&listSourceBranch, "source-branch", "", "Filter by source branch")
 	listCmd.Flags().StringVar(&listCreator, "creator", "", "Filter by creator (use 'self', name, or ID)")
+	listCmd.Flags().StringVar(&listTitleRegex, "title-regex", "", "Filter PR title by regex pattern")
 	listCmd.Flags().StringVar(&listTitleFuzzy, "title-fuzzy", "", "Filter PR title by fuzzy match")
+	listCmd.Flags().StringVar(&listRepoRegex, "repo-regex", "", "Filter repository by regex pattern")
 	listCmd.Flags().StringVar(&listRepoFuzzy, "repo-fuzzy", "", "Filter repository by fuzzy match")
 	listCmd.Flags().BoolVar(&listCurrentBranch, "current-branch", false, "Filter PRs to only show those from the current git branch")
 	listCmd.Flags().BoolVar(&listUseGitContext, "use-git-context", true, "Use git context for auto-detection when in a git repository")

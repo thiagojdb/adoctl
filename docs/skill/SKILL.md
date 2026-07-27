@@ -57,6 +57,9 @@ adoctl pr create --title "My feature"
 # Create PR with explicit settings
 adoctl pr create --repository-name myrepo --source-branch feature --target-branch main --title "My feature"
 
+# Create PR and set auto-complete
+adoctl pr create --title "My feature" --auto-complete
+
 # Create PR with reviewers and description
 adoctl pr create --title "My feature" --description "Adds new functionality" --reviewers user1@domain.com
 
@@ -73,6 +76,7 @@ adoctl pr create --title "Fix issue"
 - `--description` - PR description
 - `--reviewers` - List of reviewer IDs (can specify multiple)
 - `--work-item-id` - Work item IDs to link (auto-extracted from branch)
+- `--auto-complete` - Enable auto-complete so the PR completes when required policies pass
 - `--use-git-context` - Use git context for auto-detection (default: true)
 - `--no-git-context` - Disable git context auto-detection
 
@@ -93,6 +97,12 @@ adoctl pr list --current-branch
 # List active PRs with fuzzy title search
 adoctl pr list --status active --title-fuzzy "login"
 
+# List PRs with regex title search
+adoctl pr list --title-regex "^feat:"
+
+# List PRs for repos matching regex
+adoctl pr list --repo-regex "^(api|backend)-"
+
 # Filter by creator
 adoctl pr list --creator self
 adoctl pr list --creator "John Doe"
@@ -103,8 +113,8 @@ adoctl pr list --creator "John Doe"
 - `--status` - PR status filter: all, active, completed, abandoned
 - `--target-branch, --source-branch` - Filter by branch
 - `--creator` - Filter by creator (use 'self', name, or ID)
-- `--title-fuzzy` - Filter PR title by fuzzy match
-- `--repo-fuzzy` - Filter by repository name (fuzzy match)
+- `--title-regex, --title-fuzzy` - Filter PR title
+- `--repo-regex, --repo-fuzzy` - Filter by repository name
 - `--current-branch` - Show only PRs from current git branch
 
 ### `adoctl pr status`

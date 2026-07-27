@@ -14,6 +14,7 @@ func RegisterCommands(root *cobra.Command) {
 	root.AddCommand(reportCmd)
 	root.AddCommand(configCmd)
 	root.AddCommand(hooksCmd)
+	root.AddCommand(sprintCmd)
 
 	prCmd.AddCommand(
 		createCmd,
@@ -35,5 +36,9 @@ func RegisterCommands(root *cobra.Command) {
 	deploymentCmd.AddCommand(
 		syncDeploymentsCmd,
 		searchDeploymentsCmd,
+	)
+
+	sprintCmd.AddCommand(
+		sprintListCmd,
 	)
 }

@@ -13,6 +13,7 @@ import (
 	"adoctl/pkg/utils"
 
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/git"
+	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/webapi"
 )
 
 type PRRequirementsChecker struct {
@@ -146,7 +147,7 @@ func (c *PRRequirementsChecker) GetWorkItemsCountsBatch(ctx context.Context, ite
 	return results
 }
 
-func (s *DevOpsService) CreatePullRequest(ctx context.Context, repositoryID, sourceBranch, targetBranch, title, description string, reviewers []string, workItemIDs []string, skipChangeCheck bool) (*models.PullRequest, error) {
+func (s *DevOpsService) CreatePullRequest(ctx context.Context, repositoryID, sourceBranch, targetBranch, title, description string, reviewers []string, workItemIDs []string, skipChangeCheck bool, autoCompleteSetBy *webapi.IdentityRef) (*models.PullRequest, error) {
 	if !skipChangeCheck {
 		hasChanges, err := s.client.BranchesHaveChanges(ctx, repositoryID, sourceBranch, targetBranch)
 		if err != nil {
@@ -158,22 +159,25 @@ func (s *DevOpsService) CreatePullRequest(ctx context.Context, repositoryID, sou
 		}
 	}
 
-	sourceRefName := fmt.Sprintf("refs/heads/%s", sourceBranch)
-	targetRefName := fmt.Sprintf("refs/heads/%s", targetBranch)
-	status := git.PullRequestStatus(git.PullRequestStatusValues.Active)
+	pr := buildCreatePullRequest(sourceBranch, targetBranch, title, description, nil)
 
-	pr := &git.GitPullRequest{
-		SourceRefName: &sourceRefName,
-		TargetRefName: &targetRefName,
-		Title:         &title,
-		Description:   &description,
-		Status:        &status,
-		IsDraft:       utils.Ptr(false),
-	}
-
-	result, err := s.client.CreatePullRequest(ctx, repositoryID, pr, []string{})
+	result, err := s.client.CreatePullRequest(ctx, repositoryID, pr, reviewers)
 	if err != nil {
 		return nil, err
+	}
+
+	// Azure DevOps silently ignores autoCompleteSetBy during creation;
+	// it must be set via a subsequent update.
+	if autoCompleteSetBy != nil && result.PullRequestId != nil {
+		updatePR := &git.GitPullRequest{
+			AutoCompleteSetBy: autoCompleteSetBy,
+		}
+		_, err = s.client.UpdatePullRequest(ctx, repositoryID, *result.PullRequestId, updatePR)
+		if err != nil {
+			// PR was created successfully, but auto-complete update failed
+			prModel := models.PullRequestFromAzure(result)
+			return nil, fmt.Errorf("pull request #%d created successfully at %s, but failed to set auto-complete: %w", prModel.ID, prModel.URL, err)
+		}
 	}
 
 	if len(workItemIDs) > 0 {
@@ -189,6 +193,27 @@ func (s *DevOpsService) CreatePullRequest(ctx context.Context, repositoryID, sou
 	}
 
 	return utils.Ptr(models.PullRequestFromAzure(result)), nil
+}
+
+func buildCreatePullRequest(sourceBranch, targetBranch, title, description string, autoCompleteSetBy *webapi.IdentityRef) *git.GitPullRequest {
+	sourceRefName := fmt.Sprintf("refs/heads/%s", sourceBranch)
+	targetRefName := fmt.Sprintf("refs/heads/%s", targetBranch)
+	status := git.PullRequestStatus(git.PullRequestStatusValues.Active)
+
+	pr := &git.GitPullRequest{
+		SourceRefName: &sourceRefName,
+		TargetRefName: &targetRefName,
+		Title:         &title,
+		Description:   &description,
+		Status:        &status,
+		IsDraft:       utils.Ptr(false),
+	}
+
+	if autoCompleteSetBy != nil {
+		pr.AutoCompleteSetBy = autoCompleteSetBy
+	}
+
+	return pr
 }
 
 func (s *DevOpsService) BulkCreatePullRequests(ctx context.Context, sourceBranch, targetBranch, title, description string, workItemIDs []string) ([]BulkCreateResult, error) {
@@ -283,7 +308,7 @@ func (s *DevOpsService) BulkCreatePullRequests(ctx context.Context, sourceBranch
 				return
 			}
 
-			result, err := s.CreatePullRequest(ctx, repoID, actualSourceBranch, actualTargetBranch, title, description, []string{}, workItemIDs, true)
+			result, err := s.CreatePullRequest(ctx, repoID, actualSourceBranch, actualTargetBranch, title, description, []string{}, workItemIDs, true, nil)
 			if err != nil {
 				resultsMutex.Lock()
 				results = append(results, BulkCreateResult{

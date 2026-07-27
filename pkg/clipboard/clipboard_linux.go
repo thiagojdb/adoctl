@@ -3,7 +3,6 @@
 package clipboard
 
 import (
-	"bytes"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -34,10 +33,21 @@ func spawnClipboardServer(html, plain string) error {
 
 	// Re-exec this binary as a daemonised subprocess.
 	cmd := exec.Command(os.Args[0], "__clipboard-serve")
-	cmd.Stdin = bytes.NewReader(payload)
 	// Detach from the parent's process group so the child survives parent exit.
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
-	return cmd.Start() // don't Wait — parent returns immediately
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		_ = stdin.Close()
+		return err
+	}
+	if _, err := stdin.Write(payload); err != nil {
+		_ = stdin.Close()
+		return err
+	}
+	return stdin.Close()
 }
 
 // ServeClipboard is called by the __clipboard-serve hidden command.

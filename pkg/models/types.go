@@ -2,10 +2,12 @@ package models
 
 import (
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/git"
 	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/webapi"
+	"github.com/microsoft/azure-devops-go-api/azuredevops/v7/workitemtracking"
 )
 
 // PullRequestStatus represents the status of a pull request
@@ -193,4 +195,137 @@ func dereferenceGUID(g *uuid.UUID) string {
 		return ""
 	}
 	return g.String()
+}
+
+// Iteration represents a sprint/iteration in Azure DevOps
+type Iteration struct {
+	ID         string
+	Name       string
+	Path       string
+	StartDate  *time.Time
+	FinishDate *time.Time
+	IsCurrent  bool
+}
+
+// WorkItemHierarchy represents a work item with its children
+type WorkItemHierarchy struct {
+	ID               int
+	Title            string
+	Type             string
+	State            string
+	AssignedTo       string
+	AssignedToUnique string
+	URL              string
+	Children         []WorkItemHierarchy
+	IsAssignedToUser bool
+	ParentID         *int
+}
+
+// IterationFromAzure converts an Azure DevOps WorkItemClassificationNode to our domain model
+func IterationFromAzure(node *workitemtracking.WorkItemClassificationNode, projectName string) Iteration {
+	if node == nil {
+		return Iteration{}
+	}
+
+	result := Iteration{
+		Name: dereferenceString(node.Name),
+	}
+
+	if node.Identifier != nil {
+		result.ID = node.Identifier.String()
+	}
+
+	// Build the full path
+	if node.Path != nil {
+		result.Path = dereferenceString(node.Path)
+	} else if node.Name != nil {
+		result.Path = projectName + "\\" + *node.Name
+	}
+
+	// Extract dates from attributes
+	if node.Attributes != nil {
+		attrs := *node.Attributes
+		if startDate, ok := attrs["startDate"].(string); ok && startDate != "" {
+			if t, err := time.Parse(time.RFC3339, startDate); err == nil {
+				result.StartDate = &t
+			}
+		}
+		if finishDate, ok := attrs["finishDate"].(string); ok && finishDate != "" {
+			if t, err := time.Parse(time.RFC3339, finishDate); err == nil {
+				result.FinishDate = &t
+			}
+		}
+	}
+
+	// Determine if current
+	now := time.Now()
+	if result.StartDate != nil && result.FinishDate != nil {
+		result.IsCurrent = isTimeWithinRangeInclusive(now, *result.StartDate, *result.FinishDate)
+	}
+
+	return result
+}
+
+// WorkItemHierarchyFromAzure converts a work item map to WorkItemHierarchy
+func WorkItemHierarchyFromAzure(workItem map[string]any) WorkItemHierarchy {
+	if workItem == nil {
+		return WorkItemHierarchy{}
+	}
+
+	result := WorkItemHierarchy{}
+
+	// Extract ID
+	if id, ok := workItem["id"].(float64); ok {
+		result.ID = int(id)
+	}
+
+	// Extract fields
+	if fields, ok := workItem["fields"].(map[string]any); ok {
+		result.Title = getFieldString(fields, "System.Title")
+		result.Type = getFieldString(fields, "System.WorkItemType")
+		result.State = getFieldString(fields, "System.State")
+
+		// AssignedTo can be a string or an identity object.
+		if assignedTo, ok := fields["System.AssignedTo"].(map[string]any); ok {
+			result.AssignedTo = getFieldString(assignedTo, "displayName")
+			result.AssignedToUnique = getFirstNonEmptyField(assignedTo, "uniqueName", "mailAddress")
+		} else {
+			result.AssignedTo = getFieldString(fields, "System.AssignedTo")
+			result.AssignedToUnique = result.AssignedTo
+		}
+	}
+
+	// Extract URL
+	result.URL = getFieldString(workItem, "url")
+	if result.URL == "" {
+		// Try to get HTML URL from _links
+		if links, ok := workItem["_links"].(map[string]any); ok {
+			if html, ok := links["html"].(map[string]any); ok {
+				result.URL = getFieldString(html, "href")
+			}
+		}
+	}
+
+	return result
+}
+
+// getFieldString safely extracts a string value from a map
+func getFieldString(m map[string]any, key string) string {
+	if val, ok := m[key].(string); ok {
+		return val
+	}
+	return ""
+}
+
+func getFirstNonEmptyField(m map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value := getFieldString(m, key); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func isTimeWithinRangeInclusive(now, start, finish time.Time) bool {
+	return !now.Before(start) && !now.After(finish)
 }
