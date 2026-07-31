@@ -16,14 +16,20 @@ import (
 
 // WriteMultiFormat copies content to the clipboard as both HTML (for rich-text
 // apps such as Teams/Slack) and plain text (for text editors). On
-// Linux/Wayland it spawns a background clipboard-owner process; on X11 it
-// falls back to plain text only.
+// Linux/Wayland and X11 it spawns a background clipboard-owner process. If a
+// display connection cannot be established, it falls back to plain text.
 func WriteMultiFormat(html, plain string) error {
-	if os.Getenv("WAYLAND_DISPLAY") == "" {
-		// X11 fallback: plain text only.
+	if os.Getenv("WAYLAND_DISPLAY") == "" && os.Getenv("DISPLAY") == "" {
 		return atotto.WriteAll(plain)
 	}
-	return spawnClipboardServer(html, plain)
+
+	if err := spawnClipboardServer(html, plain); err != nil {
+		// Preserve a usable plain-text clipboard if the clipboard owner cannot
+		// be started (for example, when DISPLAY points to an unavailable X11
+		// server).
+		return atotto.WriteAll(plain)
+	}
+	return nil
 }
 
 func spawnClipboardServer(html, plain string) error {
@@ -44,6 +50,10 @@ func spawnClipboardServer(html, plain string) error {
 // It reads the HTML+plain payload from stdin and runs the Wayland clipboard
 // owner, blocking until ownership is cancelled.
 func ServeClipboard(html, plain string) error {
+	if os.Getenv("WAYLAND_DISPLAY") == "" {
+		return serveX11Clipboard(html, plain)
+	}
+
 	formats := map[string][]byte{
 		"text/html":                []byte(html),
 		"text/plain;charset=utf-8": []byte(plain),

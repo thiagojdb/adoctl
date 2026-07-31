@@ -63,10 +63,13 @@ type PullRequest struct {
 	SourceBranch string
 	TargetBranch string
 	URL          string
-	MergeStatus  MergeStatus
-	Repository   Repository
-	CreatedBy    Identity
-	IsDraft      bool
+	// WebURL is the browser URL for the pull request. URL is retained for
+	// compatibility and may contain Azure DevOps' REST endpoint instead.
+	WebURL      string
+	MergeStatus MergeStatus
+	Repository  Repository
+	CreatedBy   Identity
+	IsDraft     bool
 }
 
 // PullRequestFromAzure converts an Azure DevOps GitPullRequest to our domain model
@@ -75,6 +78,8 @@ func PullRequestFromAzure(pr *git.GitPullRequest) PullRequest {
 		return PullRequest{}
 	}
 
+	rawURL := dereferenceString(pr.Url)
+	webURL := pullRequestWebURL(pr.Links)
 	result := PullRequest{
 		Repository:   RepositoryFromAzure(pr.Repository),
 		CreatedBy:    IdentityFromAzure(pr.CreatedBy),
@@ -82,7 +87,14 @@ func PullRequestFromAzure(pr *git.GitPullRequest) PullRequest {
 		TargetBranch: dereferenceString(pr.TargetRefName),
 		Title:        dereferenceString(pr.Title),
 		Description:  dereferenceString(pr.Description),
-		URL:          dereferenceString(pr.Url),
+		URL:          rawURL,
+		WebURL:       webURL,
+	}
+	// Most command output historically reads URL directly. Prefer the browser
+	// link there whenever Azure supplied one, while retaining WebURL as an
+	// explicit field for callers that need to distinguish the two.
+	if webURL != "" {
+		result.URL = webURL
 	}
 
 	if pr.PullRequestId != nil {
@@ -102,6 +114,25 @@ func PullRequestFromAzure(pr *git.GitPullRequest) PullRequest {
 	}
 
 	return result
+}
+
+// pullRequestWebURL extracts the browser URL returned by Azure DevOps in the
+// pull request's _links.web.href field. The SDK exposes _links as interface{}
+// because its shape varies between API responses, so only the JSON map shape
+// is relied upon here.
+func pullRequestWebURL(links interface{}) string {
+	linksMap, ok := links.(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	web, ok := linksMap["web"].(map[string]interface{})
+	if !ok {
+		return ""
+	}
+
+	href, _ := web["href"].(string)
+	return href
 }
 
 // RepositoryFromAzure converts an Azure DevOps GitRepository to our domain model

@@ -7,6 +7,8 @@ require (
 	github.com/atotto/clipboard v0.1.4
 	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.1.1
+	github.com/jezek/xgb v1.3.1
+	github.com/mattn/go-runewidth v0.0.20
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/microsoft/azure-devops-go-api/azuredevops/v7 v7.1.0
 	github.com/rs/zerolog v1.33.0
