@@ -1,6 +1,6 @@
 module adoctl
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.5.0
@@ -8,7 +8,6 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.1.1
 	github.com/jezek/xgb v1.3.1
-	github.com/mattn/go-runewidth v0.0.20
 	github.com/mattn/go-sqlite3 v1.14.33
 	github.com/microsoft/azure-devops-go-api/azuredevops/v7 v7.1.0
 	github.com/rs/zerolog v1.33.0
@@ -23,7 +22,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 )

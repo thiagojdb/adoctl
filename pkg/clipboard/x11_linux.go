@@ -61,6 +61,7 @@ func serveX11Clipboard(html, plain string) error {
 		return fmt.Errorf("x11: clipboard ownership was not acquired")
 	}
 
+	transfers := make(map[x11TransferKey]*x11Transfer)
 	for {
 		event, eventErr := connection.WaitForEvent()
 		if eventErr != nil {
@@ -74,7 +75,24 @@ func serveX11Clipboard(html, plain string) error {
 		case xproto.SelectionClearEvent:
 			return nil
 		case xproto.SelectionRequestEvent:
-			serveX11SelectionRequest(connection, atoms, event, html, plain)
+			if transfer := serveX11SelectionRequest(connection, atoms, event, html, plain); transfer != nil {
+				transfers[transfer.key()] = transfer
+			}
+		case xproto.PropertyNotifyEvent:
+			if event.State != xproto.PropertyDelete {
+				continue
+			}
+			key := x11TransferKey{requestor: event.Window, property: event.Atom}
+			transfer, ok := transfers[key]
+			if !ok {
+				continue
+			}
+			finished := transfer.offset >= len(transfer.data)
+			if err := transfer.sendNext(connection); err != nil {
+				delete(transfers, key)
+			} else if finished {
+				delete(transfers, key)
+			}
 		}
 	}
 }
@@ -88,6 +106,7 @@ type x11Atoms struct {
 	utf8       xproto.Atom
 	stringAtom xproto.Atom
 	text       xproto.Atom
+	incr       xproto.Atom
 }
 
 func internX11Atoms(connection *xgb.Conn) (x11Atoms, error) {
@@ -130,6 +149,10 @@ func internX11Atoms(connection *xgb.Conn) (x11Atoms, error) {
 	if err != nil {
 		return x11Atoms{}, err
 	}
+	incr, err := atom("INCR")
+	if err != nil {
+		return x11Atoms{}, err
+	}
 
 	return x11Atoms{
 		clipboard:  clipboard,
@@ -140,10 +163,63 @@ func internX11Atoms(connection *xgb.Conn) (x11Atoms, error) {
 		utf8:       utf8,
 		stringAtom: xproto.AtomString,
 		text:       text,
+		incr:       incr,
 	}, nil
 }
 
-func serveX11SelectionRequest(connection *xgb.Conn, atoms x11Atoms, request xproto.SelectionRequestEvent, html, plain string) {
+type x11TransferKey struct {
+	requestor xproto.Window
+	property  xproto.Atom
+}
+
+type x11Transfer struct {
+	transferKey x11TransferKey
+	typeAtom    xproto.Atom
+	data        []byte
+	offset      int
+}
+
+func (transfer *x11Transfer) sendNext(connection *xgb.Conn) error {
+	const chunkSize = 64 * 1024
+	if transfer.offset >= len(transfer.data) {
+		return xproto.ChangePropertyChecked(
+			connection,
+			xproto.PropModeReplace,
+			transfer.transferKey.requestor,
+			transfer.transferKey.property,
+			transfer.typeAtom,
+			8,
+			0,
+			nil,
+		).Check()
+	}
+
+	end := transfer.offset + chunkSize
+	if end > len(transfer.data) {
+		end = len(transfer.data)
+	}
+	chunk := transfer.data[transfer.offset:end]
+	if err := xproto.ChangePropertyChecked(
+		connection,
+		xproto.PropModeReplace,
+		transfer.transferKey.requestor,
+		transfer.transferKey.property,
+		transfer.typeAtom,
+		8,
+		uint32(len(chunk)),
+		chunk,
+	).Check(); err != nil {
+		return err
+	}
+	transfer.offset = end
+	return nil
+}
+
+func (transfer *x11Transfer) key() x11TransferKey {
+	return transfer.transferKey
+}
+
+func serveX11SelectionRequest(connection *xgb.Conn, atoms x11Atoms, request xproto.SelectionRequestEvent, html, plain string) *x11Transfer {
 	property := request.Property
 	if property == xproto.AtomNone {
 		property = request.Target
@@ -157,6 +233,7 @@ func serveX11SelectionRequest(connection *xgb.Conn, atoms x11Atoms, request xpro
 		Property:  xproto.AtomNone,
 	}
 
+	var transfer *x11Transfer
 	switch request.Target {
 	case atoms.targets:
 		targets := []xproto.Atom{
@@ -168,7 +245,7 @@ func serveX11SelectionRequest(connection *xgb.Conn, atoms x11Atoms, request xpro
 			atoms.stringAtom,
 			atoms.text,
 		}
-		xproto.ChangeProperty(
+		if err := xproto.ChangePropertyChecked(
 			connection,
 			xproto.PropModeReplace,
 			request.Requestor,
@@ -177,39 +254,82 @@ func serveX11SelectionRequest(connection *xgb.Conn, atoms x11Atoms, request xpro
 			32,
 			uint32(len(targets)),
 			x11AtomBytes(targets),
-		)
-		notify.Property = property
+		).Check(); err == nil {
+			notify.Property = property
+		}
 	case atoms.html:
-		xproto.ChangeProperty(
-			connection,
-			xproto.PropModeReplace,
-			request.Requestor,
-			property,
-			atoms.html,
-			8,
-			uint32(len(html)),
-			[]byte(html),
-		)
-		notify.Property = property
+		notify.Property, transfer = setX11ClipboardProperty(connection, atoms, request.Requestor, property, atoms.html, []byte(html))
 	case atoms.plainUTF8, atoms.plain, atoms.utf8, atoms.stringAtom, atoms.text:
 		typeAtom := atoms.utf8
 		if request.Target == atoms.stringAtom {
 			typeAtom = atoms.stringAtom
 		}
-		xproto.ChangeProperty(
+		notify.Property, transfer = setX11ClipboardProperty(connection, atoms, request.Requestor, property, typeAtom, []byte(plain))
+	}
+
+	_ = xproto.SendEventChecked(connection, false, request.Requestor, 0, string(notify.Bytes())).Check()
+	return transfer
+}
+
+func setX11ClipboardProperty(connection *xgb.Conn, atoms x11Atoms, requestor xproto.Window, property, typeAtom xproto.Atom, data []byte) (xproto.Atom, *x11Transfer) {
+	if uint64(len(data)) > uint64(^uint32(0)) {
+		return xproto.AtomNone, nil
+	}
+
+	if len(data) <= x11MaxPropertyBytes(connection) {
+		if err := xproto.ChangePropertyChecked(
 			connection,
 			xproto.PropModeReplace,
-			request.Requestor,
+			requestor,
 			property,
 			typeAtom,
 			8,
-			uint32(len(plain)),
-			[]byte(plain),
-		)
-		notify.Property = property
+			uint32(len(data)),
+			data,
+		).Check(); err == nil {
+			return property, nil
+		}
+		return xproto.AtomNone, nil
 	}
 
-	xproto.SendEvent(connection, false, request.Requestor, 0, string(notify.Bytes()))
+	total := make([]byte, 4)
+	xgb.Put32(total, uint32(len(data)))
+	if err := xproto.ChangePropertyChecked(
+		connection,
+		xproto.PropModeReplace,
+		requestor,
+		property,
+		atoms.incr,
+		32,
+		1,
+		total,
+	).Check(); err != nil {
+		return xproto.AtomNone, nil
+	}
+	if err := xproto.ChangeWindowAttributesChecked(
+		connection,
+		requestor,
+		xproto.CwEventMask,
+		[]uint32{xproto.EventMaskPropertyChange},
+	).Check(); err != nil {
+		return xproto.AtomNone, nil
+	}
+
+	return property, &x11Transfer{
+		transferKey: x11TransferKey{requestor: requestor, property: property},
+		typeAtom:    typeAtom,
+		data:        data,
+	}
+}
+
+func x11MaxPropertyBytes(connection *xgb.Conn) int {
+	// ChangeProperty's fixed request header is 24 bytes. Leave additional room
+	// for padding and protocol variation; large payloads use ICCCM INCR.
+	max := int(xproto.Setup(connection).MaximumRequestLength)*4 - 64
+	if max < 1 {
+		return 1
+	}
+	return max
 }
 
 func x11AtomBytes(atoms []xproto.Atom) []byte {

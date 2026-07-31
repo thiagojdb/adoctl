@@ -3,6 +3,7 @@
 package clipboard
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strings"
@@ -17,14 +18,6 @@ func TestX11ClipboardServesHTMLAndPlainText(t *testing.T) {
 	if os.Getenv("DISPLAY") == "" {
 		t.Skip("X11 display is not available")
 	}
-
-	ownerDone := make(chan error, 1)
-	go func() {
-		ownerDone <- serveX11Clipboard(
-			`<html><body><a href="https://example.com/pr/1">PR #1</a></body></html>`,
-			"PR #1 (https://example.com/pr/1)",
-		)
-	}()
 
 	connection, err := xgb.NewConn()
 	if err != nil {
@@ -60,11 +53,37 @@ func TestX11ClipboardServesHTMLAndPlainText(t *testing.T) {
 		t.Fatalf("create requestor window: %v", err)
 	}
 	defer xproto.DestroyWindow(connection, requestor)
+	if err := xproto.ChangeWindowAttributesChecked(
+		connection,
+		requestor,
+		xproto.CwEventMask,
+		[]uint32{xproto.EventMaskPropertyChange},
+	).Check(); err != nil {
+		t.Fatalf("select requestor property events: %v", err)
+	}
 
 	property, err := internTestAtom(connection)
 	if err != nil {
 		t.Fatalf("intern test property: %v", err)
 	}
+
+	initialOwnerReply, err := xproto.GetSelectionOwner(connection, atoms.clipboard).Reply()
+	if err != nil {
+		t.Fatalf("get initial selection owner: %v", err)
+	}
+	initialOwner := xproto.Window(xproto.WindowNone)
+	if initialOwnerReply != nil {
+		initialOwner = initialOwnerReply.Owner
+	}
+
+	largeHTML := `<html><body><a href="https://example.com/pr/1">PR #1</a>` + strings.Repeat("x", 300000) + `</body></html>`
+	ownerDone := make(chan error, 1)
+	go func() {
+		ownerDone <- serveX11Clipboard(
+			largeHTML,
+			"PR #1 (https://example.com/pr/1)",
+		)
+	}()
 
 	deadline := time.Now().Add(2 * time.Second)
 	for {
@@ -72,7 +91,7 @@ func TestX11ClipboardServesHTMLAndPlainText(t *testing.T) {
 		if ownerErr != nil {
 			t.Fatalf("get selection owner: %v", ownerErr)
 		}
-		if owner != nil && owner.Owner != xproto.WindowNone {
+		if owner != nil && owner.Owner != xproto.WindowNone && owner.Owner != initialOwner {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -81,7 +100,7 @@ func TestX11ClipboardServesHTMLAndPlainText(t *testing.T) {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	html := requestX11Target(t, connection, requestor, atoms.clipboard, atoms.html, property)
+	html := requestX11Target(t, connection, requestor, atoms.clipboard, atoms.html, property, atoms.incr)
 	if !strings.Contains(html, `>PR #1</a>`) {
 		t.Fatalf("HTML clipboard payload = %q, want PR anchor", html)
 	}
@@ -90,7 +109,7 @@ func TestX11ClipboardServesHTMLAndPlainText(t *testing.T) {
 		"UTF8_STRING": atoms.utf8,
 		"text/plain":  atoms.plain,
 	} {
-		plain := requestX11Target(t, connection, requestor, atoms.clipboard, target, property)
+		plain := requestX11Target(t, connection, requestor, atoms.clipboard, target, property, atoms.incr)
 		if plain != "PR #1 (https://example.com/pr/1)" {
 			t.Fatalf("%s clipboard payload = %q, want plain report", name, plain)
 		}
@@ -122,25 +141,68 @@ func internTestAtom(connection *xgb.Conn) (xproto.Atom, error) {
 	return reply.Atom, nil
 }
 
-func requestX11Target(t *testing.T, connection *xgb.Conn, requestor xproto.Window, selection, target, property xproto.Atom) string {
+func requestX11Target(t *testing.T, connection *xgb.Conn, requestor xproto.Window, selection, target, property, incr xproto.Atom) string {
 	t.Helper()
 	if err := xproto.ConvertSelectionChecked(connection, requestor, selection, target, property, xproto.TimeCurrentTime).Check(); err != nil {
 		t.Fatalf("request target %d: %v", target, err)
 	}
 
-	for {
-		event, eventErr := connection.WaitForEvent()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		event, eventErr := connection.PollForEvent()
 		if eventErr != nil {
 			t.Fatalf("wait for target %d: %v", target, eventErr)
 		}
-		selectionEvent, ok := event.(xproto.SelectionNotifyEvent)
-		if !ok || selectionEvent.Property == xproto.AtomNone {
+		if event == nil {
+			time.Sleep(5 * time.Millisecond)
 			continue
+		}
+		selectionEvent, ok := event.(xproto.SelectionNotifyEvent)
+		if !ok {
+			continue
+		}
+		if selectionEvent.Property == xproto.AtomNone {
+			t.Fatalf("target %d was refused by clipboard owner", target)
 		}
 		reply, err := xproto.GetProperty(connection, true, requestor, property, xproto.AtomAny, 0, 1024*1024).Reply()
 		if err != nil {
 			t.Fatalf("read target %d: %v", target, err)
 		}
-		return string(reply.Value)
+		if reply == nil {
+			t.Fatalf("read target %d returned no property", target)
+		}
+		if reply.Type != incr {
+			return string(reply.Value)
+		}
+
+		var data bytes.Buffer
+		for time.Now().Before(deadline) {
+			event, eventErr := connection.PollForEvent()
+			if eventErr != nil {
+				t.Fatalf("wait for target %d chunk: %v", target, eventErr)
+			}
+			if event == nil {
+				time.Sleep(5 * time.Millisecond)
+				continue
+			}
+			propertyEvent, ok := event.(xproto.PropertyNotifyEvent)
+			if !ok || propertyEvent.Window != requestor || propertyEvent.Atom != property || propertyEvent.State != xproto.PropertyNewValue {
+				continue
+			}
+			chunk, err := xproto.GetProperty(connection, true, requestor, property, xproto.AtomAny, 0, 1024*1024).Reply()
+			if err != nil {
+				t.Fatalf("read target %d chunk: %v", target, err)
+			}
+			if chunk == nil {
+				t.Fatalf("read target %d chunk returned no property", target)
+			}
+			if len(chunk.Value) == 0 {
+				return data.String()
+			}
+			_, _ = data.Write(chunk.Value)
+		}
+		t.Fatalf("timed out reading target %d chunks", target)
 	}
+	t.Fatalf("timed out waiting for target %d", target)
+	return ""
 }

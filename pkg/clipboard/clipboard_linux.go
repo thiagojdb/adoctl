@@ -17,16 +17,15 @@ import (
 // WriteMultiFormat copies content to the clipboard as both HTML (for rich-text
 // apps such as Teams/Slack) and plain text (for text editors). On
 // Linux/Wayland and X11 it spawns a background clipboard-owner process. If a
-// display connection cannot be established, it falls back to plain text.
+// clipboard-owner process cannot be started, it falls back to plain text.
 func WriteMultiFormat(html, plain string) error {
 	if os.Getenv("WAYLAND_DISPLAY") == "" && os.Getenv("DISPLAY") == "" {
 		return atotto.WriteAll(plain)
 	}
 
 	if err := spawnClipboardServer(html, plain); err != nil {
-		// Preserve a usable plain-text clipboard if the clipboard owner cannot
-		// be started (for example, when DISPLAY points to an unavailable X11
-		// server).
+		// Preserve a usable plain-text clipboard when the owner process cannot
+		// be started. Runtime serving failures are handled by the child process.
 		return atotto.WriteAll(plain)
 	}
 	return nil
@@ -51,7 +50,11 @@ func spawnClipboardServer(html, plain string) error {
 // owner, blocking until ownership is cancelled.
 func ServeClipboard(html, plain string) error {
 	if os.Getenv("WAYLAND_DISPLAY") == "" {
-		return serveX11Clipboard(html, plain)
+		if err := serveX11Clipboard(html, plain); err != nil {
+			// Keep a usable plain-text clipboard when X11 serving fails.
+			return atotto.WriteAll(plain)
+		}
+		return nil
 	}
 
 	formats := map[string][]byte{
@@ -61,5 +64,9 @@ func ServeClipboard(html, plain string) error {
 		"UTF8_STRING":              []byte(plain),
 		"STRING":                   []byte(plain),
 	}
-	return wayland.Serve(formats)
+	if err := wayland.Serve(formats); err != nil {
+		// Keep a usable plain-text clipboard when Wayland serving fails.
+		return atotto.WriteAll(plain)
+	}
+	return nil
 }
