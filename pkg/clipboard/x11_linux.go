@@ -109,6 +109,7 @@ type x11Atoms struct {
 	incr       xproto.Atom
 }
 
+// internX11Atoms resolves the selection and target atoms used by the server.
 func internX11Atoms(connection *xgb.Conn) (x11Atoms, error) {
 	atom := func(name string) (xproto.Atom, error) {
 		reply, err := xproto.InternAtom(connection, false, uint16(len(name)), name).Reply()
@@ -179,6 +180,7 @@ type x11Transfer struct {
 	offset      int
 }
 
+// sendNext publishes the next chunk of an ICCCM INCR transfer.
 func (transfer *x11Transfer) sendNext(connection *xgb.Conn) error {
 	const chunkSize = 64 * 1024
 	if transfer.offset >= len(transfer.data) {
@@ -215,10 +217,12 @@ func (transfer *x11Transfer) sendNext(connection *xgb.Conn) error {
 	return nil
 }
 
+// key returns the requestor/property pair identifying this transfer.
 func (transfer *x11Transfer) key() x11TransferKey {
 	return transfer.transferKey
 }
 
+// serveX11SelectionRequest answers a request for one of the advertised targets.
 func serveX11SelectionRequest(connection *xgb.Conn, atoms x11Atoms, request xproto.SelectionRequestEvent, html, plain string) *x11Transfer {
 	property := request.Property
 	if property == xproto.AtomNone {
@@ -271,6 +275,7 @@ func serveX11SelectionRequest(connection *xgb.Conn, atoms x11Atoms, request xpro
 	return transfer
 }
 
+// setX11ClipboardProperty writes a payload directly or starts an INCR transfer.
 func setX11ClipboardProperty(connection *xgb.Conn, atoms x11Atoms, requestor xproto.Window, property, typeAtom xproto.Atom, data []byte) (xproto.Atom, *x11Transfer) {
 	if uint64(len(data)) > uint64(^uint32(0)) {
 		return xproto.AtomNone, nil
@@ -322,6 +327,7 @@ func setX11ClipboardProperty(connection *xgb.Conn, atoms x11Atoms, requestor xpr
 	}
 }
 
+// x11MaxPropertyBytes returns a safe single-request payload limit.
 func x11MaxPropertyBytes(connection *xgb.Conn) int {
 	// ChangeProperty's fixed request header is 24 bytes. Leave additional room
 	// for padding and protocol variation; large payloads use ICCCM INCR.
@@ -332,6 +338,7 @@ func x11MaxPropertyBytes(connection *xgb.Conn) int {
 	return max
 }
 
+// x11AtomBytes encodes atoms in the 32-bit wire format used by TARGETS.
 func x11AtomBytes(atoms []xproto.Atom) []byte {
 	data := make([]byte, len(atoms)*4)
 	for i, atom := range atoms {

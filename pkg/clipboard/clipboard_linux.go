@@ -31,6 +31,7 @@ func WriteMultiFormat(html, plain string) error {
 	return nil
 }
 
+// spawnClipboardServer starts the detached process that owns the clipboard.
 func spawnClipboardServer(html, plain string) error {
 	payload, err := json.Marshal(struct{ HTML, Plain string }{html, plain})
 	if err != nil {
