@@ -348,6 +348,9 @@ func (s *DevOpsService) RemovePullRequestReviewer(ctx context.Context, repositor
 
 func (s *DevOpsService) ListPullRequests(ctx context.Context, repositoryID, status, targetBranch, sourceBranch, creatorID string) ([]models.PullRequest, error) {
 	criteria := &git.GitPullRequestSearchCriteria{}
+	// The browser URL is returned in _links.web.href. Request links explicitly
+	// so copied PR reports do not have to guess a REST/API URL.
+	criteria.IncludeLinks = utils.Ptr(true)
 	if status != "" {
 		var statusVal git.PullRequestStatus
 		if repositoryID == "" && status == "all" {

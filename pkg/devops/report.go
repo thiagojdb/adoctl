@@ -3,7 +3,10 @@ package devops
 import (
 	"context"
 	"fmt"
+	"html"
+	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 
 	"adoctl/pkg/config"
@@ -22,6 +25,45 @@ type prGroupData struct {
 	target string
 	source string
 	prs    []prEntry
+}
+
+// pullRequestWebURL returns a browser URL suitable for sharing. Azure DevOps
+// provides this as _links.web.href; the fallback keeps reports useful for
+// older responses that did not include links and escapes each path segment so
+// project/repository names containing spaces or other reserved characters do
+// not produce malformed URLs.
+func pullRequestWebURL(pr models.PullRequest, organization string) string {
+	if webURL := strings.TrimSpace(pr.WebURL); webURL != "" {
+		return webURL
+	}
+
+	// Some callers construct a PullRequest directly and already provide a web
+	// URL in URL. Do not replace it with a guessed URL.
+	if rawURL := strings.TrimSpace(pr.URL); rawURL != "" && !strings.Contains(strings.ToLower(rawURL), "/_apis/") {
+		return rawURL
+	}
+
+	project := pr.Repository.Project.Name
+	if project == "" {
+		project = pr.Repository.Project.ID
+	}
+	repository := pr.Repository.Name
+	if repository == "" {
+		repository = pr.Repository.ID
+	}
+	if strings.TrimSpace(organization) == "" || strings.TrimSpace(project) == "" || strings.TrimSpace(repository) == "" || pr.ID <= 0 {
+		return ""
+	}
+
+	segments := []string{
+		url.PathEscape(organization),
+		url.PathEscape(project),
+		"_git",
+		url.PathEscape(repository),
+		"pullrequest",
+		strconv.Itoa(pr.ID),
+	}
+	return "https://dev.azure.com/" + strings.Join(segments, "/")
 }
 
 func (s *DevOpsService) buildPRGroups(
@@ -75,12 +117,13 @@ func (s *DevOpsService) buildPRGroups(
 		sourceRef := strings.ToLower(sourceRefName)
 		groupKey := fmt.Sprintf("%s:%s", targetRef, sourceRef)
 
-		project := pr.Repository.Project.Name
-		if project == "" {
-			project = "unknown"
+		// Project metadata is occasionally omitted by the project-level API;
+		// the configured project is a reliable fallback in that case.
+		urlPR := pr
+		if urlPR.Repository.Project.Name == "" && urlPR.Repository.Project.ID == "" {
+			urlPR.Repository.Project.Name = s.client.GetProject()
 		}
-
-		webURL := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s/pullrequest/%d", s.client.GetOrganization(), project, repoName, prID)
+		webURL := pullRequestWebURL(urlPR, s.client.GetOrganization())
 
 		warnings := []string{}
 		if showWarnings {
@@ -145,7 +188,10 @@ func (s *DevOpsService) GenerateMessageReport(ctx context.Context, prs []models.
 			if len(pr.warnings) > 0 {
 				warningStr = "\n    " + strings.Join(pr.warnings, " ")
 			}
-			prLine := fmt.Sprintf("%s: %s, [PR #%d](%s)%s", pr.repoName, pr.title, pr.id, pr.webURL, warningStr)
+			prLine := fmt.Sprintf("%s: %s, PR #%d%s", pr.repoName, pr.title, pr.id, warningStr)
+			if pr.webURL != "" {
+				prLine = fmt.Sprintf("%s: %s, [PR #%d](%s)%s", pr.repoName, pr.title, pr.id, pr.webURL, warningStr)
+			}
 			lines = append(lines, prLine)
 		}
 
@@ -159,7 +205,9 @@ func (s *DevOpsService) GenerateMessageReport(ctx context.Context, prs []models.
 	return strings.Join(lines, "\n")
 }
 
-// GeneratePlainTextReport generates a plain-text report (no URLs, no Markdown).
+// GeneratePlainTextReport generates a plain-text report with the browser URL
+// next to each PR. Keeping the URL in the plain fallback is important on X11
+// and in applications that do not request the clipboard's text/html flavor.
 func (s *DevOpsService) GeneratePlainTextReport(ctx context.Context, prs []models.PullRequest, showWarnings bool, workItemFilters []string) string {
 	groups := s.buildPRGroups(ctx, prs, showWarnings, workItemFilters)
 
@@ -173,7 +221,11 @@ func (s *DevOpsService) GeneratePlainTextReport(ctx context.Context, prs []model
 			if len(pr.warnings) > 0 {
 				warningStr = "\n    " + strings.Join(pr.warnings, " ")
 			}
-			prLine := fmt.Sprintf("%s: %s, PR #%d%s", pr.repoName, pr.title, pr.id, warningStr)
+			prLabel := fmt.Sprintf("PR #%d", pr.id)
+			if pr.webURL != "" {
+				prLabel = fmt.Sprintf("%s (%s)", prLabel, pr.webURL)
+			}
+			prLine := fmt.Sprintf("%s: %s, %s%s", pr.repoName, pr.title, prLabel, warningStr)
 			lines = append(lines, prLine)
 		}
 
@@ -199,9 +251,12 @@ func (s *DevOpsService) GenerateHTMLMessageReport(ctx context.Context, prs []mod
 		for _, pr := range g.prs {
 			warningStr := ""
 			if len(pr.warnings) > 0 {
-				warningStr = "<br>&nbsp;&nbsp;&nbsp;&nbsp;" + strings.Join(pr.warnings, " ")
+				warningStr = "<br>&nbsp;&nbsp;&nbsp;&nbsp;" + html.EscapeString(strings.Join(pr.warnings, " "))
 			}
-			prLine := fmt.Sprintf(`%s: %s, <a href="%s">PR #%d</a>%s`, pr.repoName, pr.title, pr.webURL, pr.id, warningStr)
+			prLine := fmt.Sprintf("%s: %s, PR #%d%s", html.EscapeString(pr.repoName), html.EscapeString(pr.title), pr.id, warningStr)
+			if pr.webURL != "" {
+				prLine = fmt.Sprintf(`%s: %s, <a href="%s">PR #%d</a>%s`, html.EscapeString(pr.repoName), html.EscapeString(pr.title), html.EscapeString(pr.webURL), pr.id, warningStr)
+			}
 			lines = append(lines, prLine)
 		}
 
